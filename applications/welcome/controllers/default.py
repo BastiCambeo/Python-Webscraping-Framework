@@ -18,6 +18,10 @@ def index():
     if you need a simple wiki simply replace the two lines below with:
     return auth.wiki()
     """
+    html_code = load("http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior/2013")
+    xpath = """//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[2]/text()"""
+    return parse(html_code, xpath)
+
     response.flash = T("Welcome to web2py!")
     return dict(message=T('Hello World'))
 

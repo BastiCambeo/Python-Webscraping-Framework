@@ -214,3 +214,10 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+databases
+errors
+sessions
+httpserver.pid
+parameters_80.py
+welcome.w2p
+cache
