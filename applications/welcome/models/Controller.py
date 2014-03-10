@@ -8,6 +8,5 @@ def parse(html_code, xpath, regex=".*"):
 
 def load(url):
     """ Returns the response of an http get-request to a given url """
-    import urllib2  # http support
-    response = urllib2.urlopen(url)
-    return response.read()
+    import requests  # http support
+    return requests.get(url).text
