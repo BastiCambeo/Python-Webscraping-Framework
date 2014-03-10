@@ -20,7 +20,8 @@ def index():
     """
     html_code = load("http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior/2013")
     xpath = """//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[2]/text()"""
-    return parse(html_code, xpath)
+    regex = "\d+\.\d+"
+    return repr(parse(html_code, xpath, regex))
 
     response.flash = T("Welcome to web2py!")
     return dict(message=T('Hello World'))
