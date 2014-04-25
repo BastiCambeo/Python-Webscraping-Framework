@@ -21,12 +21,13 @@ def index():
     #html_code = http_request("http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior/2013")
     #xpath = """//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[2]/text()"""
     #regex = "\d+\.\d+"
-    url = "http://beta.cambeo.com"
-    html_code = http_request(url, session=login(url, "user", "password"))
-    return html_code
 
-    result = parse(html_code, xpath, regex)
-    return xmlescape(repr(result))
+    #url = "http://testing.cambeo.com"
+    #html_code = http_request(url, session=login(url, "sebastian@cambeo.com", "cambeoProtected"))
+    #return html_code
+
+    #result = parse(html_code, xpath, regex)
+    #return xmlescape(repr(result))
 
     response.flash = T("Welcome to web2py!")
     return dict(message=T('Hello World'))

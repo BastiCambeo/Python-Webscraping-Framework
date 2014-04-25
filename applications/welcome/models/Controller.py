@@ -2,7 +2,33 @@ import requests  # http support
 from lxml import html  # xpath support
 import re  # regex support
 from pprint import pprint  # pretty print
-from requests import Session
+from requests import Session  # for login required http requests
+from gluon.storage import Storage  # easy to use dictioanry
+from gluon.scheduler import Scheduler  # for job scheduling
+import json  # for storing of dynamically schemed data
+
+db = DAL('sqlite://storage.sqlite', pool_size=1, check_reserved=['all'])
+scheduler = Scheduler(db)
+
+db.define_table('Task',
+                Field("name", type="string", unique=True),
+                Field("url", type="string"),
+                Field("xpath", type="string"),
+                Field("regex", type="string"),
+                Field("creation_datetime",   type="datetime", default=request.now),
+                Field("period", type="integer", default=10),  # in seconds
+)
+for task in db().select(db.Task.ALL):
+    db.define_table(task.name, Field("task_result", type="json"))
+
+def run_task(name):
+    task = db.Task(db.Task.name == name)
+    ## query for result ##
+    result = http_request(task.url, xpath=task.xpath, regex=task.regex)
+    ## save result in database ##
+    db[name].update_or_insert(task_result=json.dumps(result))
+    db.commit()
+    return result
 
 def parse(html_src, xpath=None, regex=None):
     """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
