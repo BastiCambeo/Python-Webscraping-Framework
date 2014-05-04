@@ -13,17 +13,22 @@ db = DAL('sqlite://storage.sqlite', pool_size=1, check_reserved=['all'])
 scheduler = Scheduler(db)
 
 class Selector(object):  # contains information for selecting a ressource on a xml/html page
-    def __init__(self, xpath, type, regex=None):
+    def __init__(self, xpath, type=None, regex=None):
         self.xpath = xpath
         self.regex = regex
         self.type = type
+
+    @staticmethod
+    def from_task(task):
+        return [Selector(xpath=task.xpaths[i], regex=task.regexes[i], type=eval(task.types[i])) for i in range(len(task.xpaths))]
 
 db.define_table('Task',
     Field("name", type="string", unique=True),
     Field("url", type="string"),
     Field("xpaths", type="list:string"),
     Field("regexes", type="list:string"),
-    Field("creation_datetime",   type="datetime", default=request.now),
+    Field("types", type="list:string"),
+    Field("creation_datetime", type="datetime", default=request.now),
     Field("period", type="integer", default=10),  # in seconds
 )
 for task in db().select(db.Task.ALL):
@@ -32,7 +37,7 @@ for task in db().select(db.Task.ALL):
 def run_task(name):
     task = db.Task(db.Task.name == name)
     ## query for result ##
-    result = http_request(task.url, xpath=task.xpath, regex=task.regex)
+    result = http_request(task.url, selectors=Selector.from_task(task))
     ## save result in database ##
     db[name].update_or_insert(task_result=json.dumps(result))
     db.commit()
@@ -67,7 +72,8 @@ def parse(html_src, selectors=None):
             result = [re.search(selector.regex, node,  re.DOTALL | re.UNICODE).group() for node in [unicode(node) for node in nodes] if re.search(selector.regex, node,  re.DOTALL)]  # apply regex to every single node
 
         ## auto cast result type##
-        result = [output_cast(data) for data in result]
+        if output_cast:
+            result = [output_cast(data) for data in result]
         selector_results += [result]
 
     ## convert selector results from a tuple of lists to a list of tuples ##
@@ -78,7 +84,7 @@ def parse(html_src, selectors=None):
 def login(url, user, password):
     """ Returns the session that is yielded by the login """
     session = Session()
-    inputs = http_request(url, xpath="//input", session=session)
+    inputs = http_request(url, selectors=[Selector(xpath="//input")], session=session)
     inputs[0].value = user  # TODO: more intelligent search for correct user and password field in form
     inputs[1].value = password
     data = {input.name: input.value for input in inputs}
