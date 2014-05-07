@@ -22,6 +22,9 @@ else:
     ## from google.appengine.api.memcache import Client
     ## session.connect(request, response, db = MEMDB(Client()))
 
+scheduler = Scheduler(db, tasks=dict(run_by_name=Task.run_by_name))
+Task._define_tables()
+
 ## by default give a view/generic.extension to all actions from localhost
 ## none otherwise. a pattern can be 'controller/function.extension'
 response.generic_patterns = ['*'] if request.is_local else []

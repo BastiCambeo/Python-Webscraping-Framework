@@ -26,7 +26,7 @@ class Task(object):
         def __init__(self, xpath, name=None, type=None, regex=None):
             self.name = name
             self.xpath = xpath
-            self.regex = regex
+            self.regex = None if regex == "None" else regex
 
             ## type can be a type or string representation of a type ##
             if isinstance(type, basestring):
@@ -43,13 +43,12 @@ class Task(object):
             return [Task.Selector(name=task_row.selector_names[i], xpath=task_row.selector_xpaths[i], regex=task_row.selector_regexes[i], type=Task._STRING_TYPES[task_row.selector_types[i]]) for i in range(len(task_row.selector_names))]
 
 
-    def __init__(self, name, url, period, selectors, creation_datetime=None, key=None):
+    def __init__(self, name, url, period, selectors, creation_datetime=None):
         self.name = name
         self.url = url
         self.selectors = selectors
         self.period = period
         self.creation_datetime = None or datetime.datetime.now()
-        self.key = key
 
     @staticmethod
     def _define_tables():
@@ -81,9 +80,7 @@ class Task(object):
             "selector_regexes": [selector.regex for selector in self.selectors],
             "selector_types": [selector.string_type for selector in self.selectors],
         }
-        if self.key:
-            kwargs["_key"] = self.key
-        db.Task.update_or_insert(**kwargs)
+        db.Task.update_or_insert(db.Task.name == self.name, **kwargs)
 
     @staticmethod
     def from_task_row(task_row):
@@ -93,7 +90,6 @@ class Task(object):
             period=task_row.period,
             creation_datetime=task_row.creation_datetime,
             selectors=Task.Selector.from_task_row(task_row),
-            key=task_row.id,
         )
 
     @staticmethod
@@ -104,26 +100,40 @@ class Task(object):
     def get_all():
         return [Task.from_task_row(task_row) for task_row in db().select(db.Task.ALL)]
 
+    def schedule(self):
+        db(db.scheduler_task.uuid == self.name).delete()
+        scheduler.queue_task('run_by_name', uuid=task.name, pvars=dict(name=task.name), repeats=0, period=task.period, immediate=True, retry_failed=-1)  # repeats=0 and retry_failed=-1 means indefinitely
+
     def delete_results(self):
         try:
             db[self.name].drop()
         except Exception as e:
             pass
 
+    def get_results(self):
+        task_rows = db().select(db[self.name].ALL)
+        return [tuple(task_row.as_dict()[selector.name] for selector in self.selectors) for task_row in task_rows]
+
     @staticmethod
     def delete_all_results():
         for task in Task.get_all():
             task.delete_results()
 
-    def run(self, store=True):
+    def run(self, store=True, data_modifier=lambda x: x, return_result=False):
         result = Scraper.http_request(self.url, selectors=self.selectors)
         ## save result in database ##
         if result and store:
             for row in result:
-                row_dict = {self.selectors[i].name: data for i, data in enumerate(row)}  # map selector names and data together
+                row_dict = {self.selectors[i].name: data_modifier(data) for i, data in enumerate(row)}  # map selector names and data together
                 db[self.name].update_or_insert(**row_dict)
             db.commit()
-        return result
+
+        if return_result:
+            return result
+
+    @staticmethod
+    def run_by_name(name, **kwargs):
+        return Task.get_by_name(name).run(**kwargs)
 
 
 class Scraper(object):
@@ -152,8 +162,6 @@ class Scraper(object):
             elif selector.type is datetime.datetime:
                 output_cast = selector.type = lambda data : datetime.datetime(*(feedparser._parse_date(data)[:6]))
                 selector.regex = selector.regex or "\d+ \w+ \d+"
-            else:
-                print selector.type
 
             if selector.regex:
                 result = [re.search(selector.regex, node,  re.DOTALL | re.UNICODE).group() for node in [unicode(node) for node in nodes] if re.search(selector.regex, node,  re.DOTALL)]  # apply regex to every single node
@@ -187,10 +195,3 @@ class Scraper(object):
         session = session or Session()
         html_src = session.get(url).text
         return Scraper.parse(html_src, selectors=selectors)
-
-
-##### START Configuration #####
-db = DAL('sqlite://storage.sqlite', pool_size=1, check_reserved=['all'])
-scheduler = Scheduler(db)
-Task._define_tables()
-##### END Configuration #####
