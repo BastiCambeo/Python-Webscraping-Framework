@@ -13,6 +13,7 @@ task = Task(
 )
 
 def add_task():
+    task.delete_results()
     task.put()
     task.schedule()
     return True
@@ -31,6 +32,7 @@ def list_tasks():
 def run_by_name():
     return Task.run_by_name(request.vars.name)
 
+@auth.requires_login()
 def view_data():
     task = Task.get_by_name(request.vars.name)
     data = [tuple(selector.name for selector in task.selectors)] + task.get_results()

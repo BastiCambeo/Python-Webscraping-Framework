@@ -34,6 +34,8 @@ BASE = ''  # optonal prefix for incoming URLs
 
 routes_in = (
     # disable application #
+
+    ('/default/user/$anything', '/webscraper/default/user/$anything'),
     ('/$c/$f', '/webscraper/$c/$f'),
     # do not reroute admin unless you want to disable it
     (BASE + '/admin', '/admin/default/index'),

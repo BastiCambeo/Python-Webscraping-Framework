@@ -26,6 +26,7 @@ response.menu = [
     (T('Home'), False, URL('default', 'index'), []),
     (SPAN('Tasks', _class='highlighted'), False, '#', [(task.name, False, URL('ajax', 'view_data', vars={"name": task.name})) for task in Task.get_all()]),
     (T('Database'), False, URL('appadmin', 'index')),
+    (T('Administration'), False, URL('admin', 'default', 'site')),
 ]
 
 DEVELOPMENT_MENU = False
