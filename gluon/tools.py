@@ -278,7 +278,8 @@ class Mail(object):
         sender=None,
         encoding='utf-8',
         raw=False,
-        headers={}
+        headers={},
+        from_address=None
     ):
         """
         Sends an email using data specified in constructor
@@ -308,8 +309,9 @@ class Mail(object):
             encoding: encoding of all strings passed to this method (including
                       message bodies)
             headers: dictionary of headers to refine the headers just before
-                     sending mail, e.g. {'Return-Path' : 'bounces@example.org'}
-
+                     sending mail, e.g. {'X-Mailer' : 'web2py mailer'}
+            from_address: address to appear in the 'From:' header, this is not the
+                          envelope sender. If not specified the sender will be used
         Examples:
 
             #Send plain text message to single address:
@@ -655,7 +657,10 @@ class Mail(object):
             # no cryptography process as usual
             payload = payload_in
 
-        payload['From'] = encoded_or_raw(sender.decode(encoding))
+        if from_address:
+            payload['From'] = encoded_or_raw(from_address.decode(encoding))
+        else:
+            payload['From'] = encoded_or_raw(sender.decode(encoding))
         origTo = to[:]
         if to:
             payload['To'] = encoded_or_raw(', '.join(to).decode(encoding))
@@ -752,7 +757,8 @@ class Recaptcha(DIV):
         error_message='invalid',
         label='Verify:',
         options='',
-        comment = ''
+        comment = '',
+        ajax=False
     ):
         self.request_vars = request and request.vars or current.request.vars
         self.remote_addr = request.env.remote_addr
@@ -767,6 +773,7 @@ class Recaptcha(DIV):
         self.label = label
         self.options = options
         self.comment = comment
+        self.ajax = ajax
 
     def _validate(self):
 
@@ -820,18 +827,43 @@ class Recaptcha(DIV):
             server = self.API_SSL_SERVER
         else:
             server = self.API_SERVER
-        captcha = DIV(
-            SCRIPT("var RecaptchaOptions = {%s};" % self.options),
-            SCRIPT(_type="text/javascript",
-                   _src="%s/challenge?k=%s%s" % (server, public_key, error_param)),
-            TAG.noscript(
-                IFRAME(
-                    _src="%s/noscript?k=%s%s" % (
-                        server, public_key, error_param),
-                    _height="300", _width="500", _frameborder="0"), BR(),
-                INPUT(
-                    _type='hidden', _name='recaptcha_response_field',
-                    _value='manual_challenge')), _id='recaptcha')
+        if not self.ajax:
+            captcha = DIV(
+                SCRIPT("var RecaptchaOptions = {%s};" % self.options),
+                SCRIPT(_type="text/javascript",
+                       _src="%s/challenge?k=%s%s" % (server, public_key, error_param)),
+                TAG.noscript(
+                    IFRAME(
+                        _src="%s/noscript?k=%s%s" % (
+                            server, public_key, error_param),
+                        _height="300", _width="500", _frameborder="0"), BR(),
+                    INPUT(
+                        _type='hidden', _name='recaptcha_response_field',
+                        _value='manual_challenge')), _id='recaptcha')
+
+        else: #use Google's ajax interface, needed for LOADed components
+
+            url_recaptcha_js = "%s/js/recaptcha_ajax.js" % server
+            RecaptchaOptions = "var RecaptchaOptions = {%s}" % self.options
+            script = """%(options)s;
+            jQuery.getScript('%(url)s',function() {
+                Recaptcha.create('%(public_key)s',
+                    'recaptcha',jQuery.extend(RecaptchaOptions,{'callback':Recaptcha.focus_response_field}))
+                }) """ % ({'options':RecaptchaOptions,'url':url_recaptcha_js,'public_key':public_key})
+            captcha = DIV(
+                SCRIPT(
+                    script,
+                    _type="text/javascript",
+                ),
+                TAG.noscript(
+                    IFRAME(
+                        _src="%s/noscript?k=%s%s" % (
+                            server, public_key, error_param),
+                        _height="300", _width="500", _frameborder="0"), BR(),
+                    INPUT(
+                        _type='hidden', _name='recaptcha_response_field',
+                        _value='manual_challenge')), _id='recaptcha')
+
         if not self.errors.captcha:
             return XML(captcha).xml()
         else:
@@ -2030,8 +2062,9 @@ class Auth(object):
         if user and user.get(settings.passfield, False):
             password = settings.table_user[
                 settings.passfield].validate(password)[0]
-            if not user.registration_key.strip() and password == \
-                user[settings.passfield]:
+            if ((user.registration_key is None or 
+                 not user.registration_key.strip()) and 
+                password == user[settings.passfield]):
                 self.login_user(user)
                 return user
         else:
@@ -2317,8 +2350,8 @@ class Auth(object):
                     elif temp_user.registration_key in ('disabled', 'blocked'):
                         response.flash = self.messages.login_disabled
                         return form
-                    elif not temp_user.registration_key is None and \
-                            temp_user.registration_key.strip():
+                    elif (not temp_user.registration_key is None 
+                          and temp_user.registration_key.strip()):
                         response.flash = \
                             self.messages.registration_verifying
                         return form

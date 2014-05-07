@@ -4,7 +4,7 @@
 # are used when the respective element is missing from the
 # (possibly rewritten) incoming URL
 #
-default_application = 'welcome'    # ordinarily set in base routes.py
+default_application = 'webscraper'    # ordinarily set in base routes.py
 default_controller = 'default'  # ordinarily set in app-specific routes.py
 default_function = 'index'      # ordinarily set in app-specific routes.py
 
@@ -16,7 +16,7 @@ default_function = 'index'      # ordinarily set in app-specific routes.py
 # Example: support welcome, admin, app and myapp, with myapp the default:
 
 
-routes_app = ((r'/(?P<app>welcome|admin|app)\b.*', r'\g<app>'),
+routes_app = ((r'/(?P<app>webscraper|admin|app)\b.*', r'\g<app>'),
               (r'(.*)', r'myapp'),
               (r'/?(.*)', r'myapp'))
 
@@ -34,7 +34,7 @@ BASE = ''  # optonal prefix for incoming URLs
 
 routes_in = (
     # disable application #
-    ('/$c/$f', '/welcome/$c/$f'),
+    ('/$c/$f', '/webscraper/$c/$f'),
     # do not reroute admin unless you want to disable it
     (BASE + '/admin', '/admin/default/index'),
     (BASE + '/admin/$anything', '/admin/$anything'),
@@ -58,7 +58,7 @@ routes_in = (
 
 routes_out = (
     # disable application #
-    ('/welcome/$c/$f', '/$c/$f'),
+    ('/webscraper/$c/$f', '/$c/$f'),
     # do not reroute admin unless you want to disable it
     ('/admin/$anything', BASE + '/admin/$anything'),
     # do not reroute appadmin unless you want to disable it

@@ -1,0 +1,17 @@
+{{def TABLE(data, classtag="com_default_table"):}}
+    <table class="{{=classtag}}">
+        {{for row in data:}}
+            <tr>
+                {{for cell in row:}}
+                    <td>
+                    {{if hasattr(cell, '__iter__'):}}
+                        {{TABLE(cell, classtag=classtag + " " + classtag+"_inner")}}
+                    {{else:}}
+                        {{=cell}}
+                    {{pass}}
+                    </td>
+                {{pass}}
+            </tr>
+        {{pass}}
+    </table>
+{{pass}}
