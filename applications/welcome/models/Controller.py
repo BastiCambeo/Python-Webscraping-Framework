@@ -9,92 +9,188 @@ import json  # for storing of dynamically schemed data
 import feedparser  # autodetection of date formats
 import datetime  # date / time support
 
-db = DAL('sqlite://storage.sqlite', pool_size=1, check_reserved=['all'])
-scheduler = Scheduler(db)
+class Task(object):
+    _STRING_TYPES = {
+        unicode: "string",
+        str: "string",
+        int: "integer",
+        float: "double",
+        datetime.datetime: "datetime",
+        "string": unicode,
+        "integer": int,
+        "double": float,
+        "datetime": datetime.datetime,
+    }
 
-class Selector(object):  # contains information for selecting a ressource on a xml/html page
-    def __init__(self, xpath, type=None, regex=None):
-        self.xpath = xpath
-        self.regex = regex
-        self.type = type
+    class Selector(object):  # contains information for selecting a ressource on a xml/html page
+        def __init__(self, xpath, name=None, type=None, regex=None):
+            self.name = name
+            self.xpath = xpath
+            self.regex = regex
+
+            ## type can be a type or string representation of a type ##
+            if isinstance(type, basestring):
+                self.type = Task._STRING_TYPES[type]
+            else:
+                self.type = type
+
+        @property
+        def string_type(self):
+            return Task._STRING_TYPES[self.type]
+
+        @staticmethod
+        def from_task_row(task_row):
+            return [Task.Selector(name=task_row.selector_names[i], xpath=task_row.selector_xpaths[i], regex=task_row.selector_regexes[i], type=Task._STRING_TYPES[task_row.selector_types[i]]) for i in range(len(task_row.selector_names))]
+
+
+    def __init__(self, name, url, period, selectors, creation_datetime=None, key=None):
+        self.name = name
+        self.url = url
+        self.selectors = selectors
+        self.period = period
+        self.creation_datetime = None or datetime.datetime.now()
+        self.key = key
 
     @staticmethod
-    def from_task(task):
-        return [Selector(xpath=task.xpaths[i], regex=task.regexes[i], type=eval(task.types[i])) for i in range(len(task.xpaths))]
+    def _define_tables():
+        db.define_table('Task',
+            Field("name", type="string", unique=True),
+            Field("url", type="string"),
+            Field("creation_datetime", type="datetime", default=request.now),
+            Field("period", type="integer", default=10),  # in seconds
+            ## selectors ##
+            Field("selector_names", type="list:string"),
+            Field("selector_xpaths", type="list:string"),
+            Field("selector_regexes", type="list:string"),
+            Field("selector_types", type="list:string"),
+        )
 
-db.define_table('Task',
-    Field("name", type="string", unique=True),
-    Field("url", type="string"),
-    Field("xpaths", type="list:string"),
-    Field("regexes", type="list:string"),
-    Field("types", type="list:string"),
-    Field("creation_datetime", type="datetime", default=request.now),
-    Field("period", type="integer", default=10),  # in seconds
-)
-for task in db().select(db.Task.ALL):
-    db.define_table(task.name, Field("task_result", type="json"))
+        for task_row in db().select(db.Task.ALL):
+            fields = [Field(selector.name, type=selector.string_type) for selector in Task.Selector.from_task_row(task_row)]
+            db.define_table(task_row.name, *fields)
 
-def run_task(name):
-    task = db.Task(db.Task.name == name)
-    ## query for result ##
-    result = http_request(task.url, selectors=Selector.from_task(task))
-    ## save result in database ##
-    db[name].update_or_insert(task_result=json.dumps(result))
-    db.commit()
-    return result
+    def put(self):
+        """ Serializes the entity into the database """
+        kwargs = {
+            "name": self.name,
+            "url": self.url,
+            "creation_datetime": self.creation_datetime,
+            "period": self.period,
+            "selector_names": [selector.name for selector in self.selectors],
+            "selector_xpaths": [selector.xpath for selector in self.selectors],
+            "selector_regexes": [selector.regex for selector in self.selectors],
+            "selector_types": [selector.string_type for selector in self.selectors],
+        }
+        if self.key:
+            kwargs["_key"] = self.key
+        db.Task.update_or_insert(**kwargs)
 
-def parse(html_src, selectors=None):
-    """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
+    @staticmethod
+    def from_task_row(task_row):
+        return Task(
+            name=task_row.name,
+            url=task_row.url,
+            period=task_row.period,
+            creation_datetime=task_row.creation_datetime,
+            selectors=Task.Selector.from_task_row(task_row),
+            key=task_row.id,
+        )
 
-    if not selectors:
-        return html_src  # nothing to do
+    @staticmethod
+    def get_by_name(name):
+        return Task.from_task_row(db.Task(db.Task.name == name))
 
-    parsed_tree = html.document_fromstring(html_src)
+    @staticmethod
+    def get_all():
+        return [Task.from_task_row(task_row) for task_row in db().select(db.Task.ALL)]
 
-    selector_results = []
-    for selector in selectors:
-        nodes = parsed_tree.xpath(selector.xpath)
+    def delete_results(self):
+        try:
+            db[self.name].drop()
+        except Exception as e:
+            pass
 
-        if selector.type in [unicode, str]:
-            output_cast = selector.type
-            selector.regex = selector.regex or "\w+"
-        elif selector.type == int:
-            output_cast = selector.type
-            selector.regex = selector.regex or "\d+"
-        elif selector.type == float:
-            output_cast = selector.type
-            selector.regex = selector.regex or "\d+\.\d+"
-        elif selector.type is datetime.datetime:
-            output_cast = selector.type = lambda data : datetime.datetime(*(feedparser._parse_date(data)[:6]))
-            selector.regex = selector.regex or "\d+ \w+ \d+"
+    @staticmethod
+    def delete_all_results():
+        for task in Task.get_all():
+            task.delete_results()
 
-        if selector.regex:
-            result = [re.search(selector.regex, node,  re.DOTALL | re.UNICODE).group() for node in [unicode(node) for node in nodes] if re.search(selector.regex, node,  re.DOTALL)]  # apply regex to every single node
-
-        ## auto cast result type##
-        if output_cast:
-            result = [output_cast(data) for data in result]
-        selector_results += [result]
-
-    ## convert selector results from a tuple of lists to a list of tuples ##
-    selector_results = [tuple(selector_results[j][i] for j in range(len(selectors))) for i in range(len(selector_results[0]))]
-
-    return selector_results
-
-def login(url, user, password):
-    """ Returns the session that is yielded by the login """
-    session = Session()
-    inputs = http_request(url, selectors=[Selector(xpath="//input")], session=session)
-    inputs[0].value = user  # TODO: more intelligent search for correct user and password field in form
-    inputs[1].value = password
-    data = {input.name: input.value for input in inputs}
-    session.post(url, data)
-    return session
-
-def http_request(url, selectors=None, session=None):
-    """ Returns the response of an http get-request to a given url """
-    session = session or Session()
-    html_src = session.get(url).text
-    return parse(html_src, selectors=selectors)
+    def run(self, store=True):
+        result = Scraper.http_request(self.url, selectors=self.selectors)
+        ## save result in database ##
+        if result and store:
+            for row in result:
+                row_dict = {self.selectors[i].name: data for i, data in enumerate(row)}  # map selector names and data together
+                db[self.name].update_or_insert(**row_dict)
+            db.commit()
+        return result
 
 
+class Scraper(object):
+    @staticmethod
+    def parse(html_src, selectors=None):
+        """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
+
+        if not selectors:
+            return html_src  # nothing to do
+
+        parsed_tree = html.document_fromstring(html_src)
+
+        selector_results = []
+        for selector in selectors:
+            nodes = parsed_tree.xpath(selector.xpath)
+
+            if selector.type in [unicode, str]:
+                output_cast = selector.type
+                selector.regex = selector.regex or "\w+"
+            elif selector.type == int:
+                output_cast = selector.type
+                selector.regex = selector.regex or "\d+"
+            elif selector.type == float:
+                output_cast = selector.type
+                selector.regex = selector.regex or "\d+\.\d+"
+            elif selector.type is datetime.datetime:
+                output_cast = selector.type = lambda data : datetime.datetime(*(feedparser._parse_date(data)[:6]))
+                selector.regex = selector.regex or "\d+ \w+ \d+"
+            else:
+                print selector.type
+
+            if selector.regex:
+                result = [re.search(selector.regex, node,  re.DOTALL | re.UNICODE).group() for node in [unicode(node) for node in nodes] if re.search(selector.regex, node,  re.DOTALL)]  # apply regex to every single node
+            else:
+                result = nodes
+
+            ## auto cast result type##
+            if output_cast:
+                result = [output_cast(data) for data in result]
+            selector_results += [result]
+
+        ## convert selector results from a tuple of lists to a list of tuples ##
+        selector_results = [tuple(selector_results[j][i] for j in range(len(selectors))) for i in range(len(selector_results[0]))]
+
+        return selector_results
+
+    @staticmethod
+    def login(url, user, password):
+        """ Returns the session that is yielded by the login """
+        session = Session()
+        inputs = Scraper.http_request(url, selectors=[Task.Selector(xpath="//input")], session=session)
+        inputs[0].value = user  # TODO: more intelligent search for correct user and password field in form
+        inputs[1].value = password
+        data = {input.name: input.value for input in inputs}
+        session.post(url, data)
+        return session
+
+    @staticmethod
+    def http_request(url, selectors=None, session=None):
+        """ Returns the response of an http get-request to a given url """
+        session = session or Session()
+        html_src = session.get(url).text
+        return Scraper.parse(html_src, selectors=selectors)
+
+
+##### START Configuration #####
+db = DAL('sqlite://storage.sqlite', pool_size=1, check_reserved=['all'])
+scheduler = Scheduler(db)
+Task._define_tables()
+##### END Configuration #####
