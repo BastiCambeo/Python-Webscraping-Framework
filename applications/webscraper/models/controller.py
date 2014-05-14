@@ -8,6 +8,9 @@ from gluon.scheduler import Scheduler  # for job scheduling
 import json  # for storing of dynamically schemed data
 import feedparser  # autodetection of date formats
 import datetime  # date / time support
+import logging  # support for logging to console (debuggin)
+
+logging.getLogger().setLevel(logging.INFO)
 
 class Task(object):
     _STRING_TYPES = {
@@ -43,18 +46,29 @@ class Task(object):
             return [Task.Selector(name=task_row.selector_names[i], xpath=task_row.selector_xpaths[i], regex=task_row.selector_regexes[i], type=Task._STRING_TYPES[task_row.selector_types[i]]) for i in range(len(task_row.selector_names))]
 
 
-    def __init__(self, name, url, period, selectors, creation_datetime=None):
+    def __init__(self, name, url_generator, period, selectors, creation_datetime=None):
         self.name = name
-        self.url = url
+        self.url_generator = url_generator
         self.selectors = selectors
         self.period = period
-        self.creation_datetime = None or datetime.datetime.now()
+        self.creation_datetime = creation_datetime or datetime.datetime.now()
+
+    @property
+    def urls(self):
+        ## url_generator may be a simple string, OR [url containing %s][database-table][database-field]. In the latter case, multiple urls will be created from the given specification. ##
+        ## This way it is possible to define recursive crawlers, that successively add new pages to its own urls ##
+        if "%s" in self.url_generator:
+            splits = self.url_generator[1:-1].split("][")
+            rows = db().select(db[splits[1]].ALL)
+            return {splits[0] % row[splits[2]] for row in set(rows)}  # Convert result into a set to remove duplicates
+        else:
+            return {self.url_generator}
 
     @staticmethod
     def _define_tables():
         db.define_table('Task',
             Field("name", type="string", unique=True),
-            Field("url", type="string"),
+            Field("url_generator", type="string"),
             Field("creation_datetime", type="datetime", default=request.now),
             Field("period", type="integer", default=10),  # in seconds
             ## selectors ##
@@ -72,7 +86,7 @@ class Task(object):
         """ Serializes the entity into the database """
         kwargs = {
             "name": self.name,
-            "url": self.url,
+            "url_generator": self.url_generator,
             "creation_datetime": self.creation_datetime,
             "period": self.period,
             "selector_names": [selector.name for selector in self.selectors],
@@ -86,7 +100,7 @@ class Task(object):
     def from_task_row(task_row):
         return Task(
             name=task_row.name,
-            url=task_row.url,
+            url_generator=task_row.url_generator,
             period=task_row.period,
             creation_datetime=task_row.creation_datetime,
             selectors=Task.Selector.from_task_row(task_row),
@@ -94,7 +108,10 @@ class Task(object):
 
     @staticmethod
     def get_by_name(name):
-        return Task.from_task_row(db.Task(db.Task.name == name))
+        try:
+            return Task.from_task_row(db.Task(db.Task.name == name))
+        except:
+            pass
 
     @staticmethod
     def get_all():
@@ -102,7 +119,7 @@ class Task(object):
 
     def schedule(self):
         db(db.scheduler_task.uuid == self.name).delete()
-        scheduler.queue_task('run_by_name', uuid=task.name, pvars=dict(name=task.name), repeats=0, period=task.period, immediate=True, retry_failed=-1)  # repeats=0 and retry_failed=-1 means indefinitely
+        scheduler.queue_task('run_by_name', uuid=self.name, pvars=dict(name=self.name), repeats=0, period=self.period, immediate=True, retry_failed=-1, timeout=3600)  # repeats=0 and retry_failed=-1 means indefinitely
 
     def delete_results(self):
         try:
@@ -119,12 +136,23 @@ class Task(object):
         for task in Task.get_all():
             task.delete_results()
 
-    def run(self, store=True, data_modifier=lambda x: x, return_result=False):
-        result = Scraper.http_request(self.url, selectors=self.selectors)
+    def run(self, store=True, return_result=False):
+        result = []
+        visited_urls = set()
+        remaining_urls = self.urls - visited_urls
+
+        while remaining_urls: #and len(visited_urls) < 10:  # urls may change during iteration. Therefore for-each is not applicable.
+            url = remaining_urls.pop()
+            visited_urls |= {url}
+            remaining_urls = self.urls - visited_urls
+            logging.warning("%s:%s" % (len(visited_urls), len(remaining_urls)))
+
+            result += Scraper.http_request(url, selectors=self.selectors)
+
         ## save result in database ##
         if result and store:
             for row in result:
-                row_dict = {self.selectors[i].name: data_modifier(data) for i, data in enumerate(row)}  # map selector names and data together
+                row_dict = {self.selectors[i].name: data for i, data in enumerate(row)}  # map selector names and data together
                 db[self.name].update_or_insert(**row_dict)
             db.commit()
 
@@ -146,7 +174,7 @@ class Scraper(object):
 
         parsed_tree = html.document_fromstring(html_src)
 
-        selector_results = []
+        selectors_results = []
         for selector in selectors:
             nodes = parsed_tree.xpath(selector.xpath)
 
@@ -159,24 +187,38 @@ class Scraper(object):
             elif selector.type == float:
                 output_cast = selector.type
                 selector.regex = selector.regex or "\d+\.\d+"
-            elif selector.type is datetime.datetime:
-                output_cast = selector.type = lambda data : datetime.datetime(*(feedparser._parse_date(data)[:6]))
+            elif selector.type == datetime.datetime:
+                output_cast = lambda data: datetime.datetime(*(feedparser._parse_date(data)[:6]))
                 selector.regex = selector.regex or "\d+ \w+ \d+"
 
             if selector.regex:
-                result = [re.search(selector.regex, node,  re.DOTALL | re.UNICODE).group() for node in [unicode(node) for node in nodes] if re.search(selector.regex, node,  re.DOTALL)]  # apply regex to every single node
+                ## Apply regex to every single node ##
+                selector_results = []
+                for node in nodes:
+                    node = unicode(node)
+                    regex_result = re.search(selector.regex, node,  re.DOTALL | re.UNICODE)
+                    if regex_result:
+                        if regex_result.groups():
+                            selector_results += [regex_result.groups()[-1]]
+                        else:
+                            selector_results += [regex_result.group()]
             else:
-                result = nodes
+                selector_results = nodes
 
             ## auto cast result type##
             if output_cast:
-                result = [output_cast(data) for data in result]
-            selector_results += [result]
+                selector_results = [output_cast(data) for data in selector_results]
+            selectors_results += [selector_results]
 
         ## convert selector results from a tuple of lists to a list of tuples ##
-        selector_results = [tuple(selector_results[j][i] for j in range(len(selectors))) for i in range(len(selector_results[0]))]
+        result = []
+        for y in range(len(selectors_results[0])):
+            row = []
+            for x in range(len(selectors)):
+                row += [selectors_results[x][y]] if y < len(selectors_results[x]) else [None]  # guarantee that an element is added
+            result += [row]
 
-        return selector_results
+        return result
 
     @staticmethod
     def login(url, user, password):
@@ -192,6 +234,7 @@ class Scraper(object):
     @staticmethod
     def http_request(url, selectors=None, session=None):
         """ Returns the response of an http get-request to a given url """
+        logging.warning(url)  # For Debugging purposes
         session = session or Session()
         html_src = session.get(url).text
         return Scraper.parse(html_src, selectors=selectors)
