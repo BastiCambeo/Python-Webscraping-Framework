@@ -76,11 +76,12 @@ class Task(object):
             Field("selector_xpaths", type="list:string"),
             Field("selector_regexes", type="list:string"),
             Field("selector_types", type="list:string"),
+            redefine=True
         )
 
         for task_row in db().select(db.Task.ALL):
             fields = [Field(selector.name, type=selector.string_type) for selector in Task.Selector.from_task_row(task_row)]
-            db.define_table(task_row.name, *fields)
+            db.define_table(task_row.name, *fields, redefine=True)
 
     def put(self):
         """ Serializes the entity into the database """
@@ -136,7 +137,11 @@ class Task(object):
         for task in Task.get_all():
             task.delete_results()
 
-    def run(self, store=True, return_result=False):
+    def run(self, store=True, return_result=False, delete_previous_results=True):
+        if store and delete_previous_results:
+            self.delete_results()
+            Task._define_tables()
+
         result = []
         visited_urls = set()
         remaining_urls = self.urls - visited_urls
@@ -145,7 +150,7 @@ class Task(object):
             url = remaining_urls.pop()
             visited_urls |= {url}
             remaining_urls = self.urls - visited_urls
-            logging.warning("%s:%s" % (len(visited_urls), len(remaining_urls)))
+            logging.warning("%s/%s" % (len(visited_urls), len(remaining_urls)+len(visited_urls)))
 
             result += Scraper.http_request(url, selectors=self.selectors)
 
@@ -180,7 +185,7 @@ class Scraper(object):
 
             if selector.type in [unicode, str]:
                 output_cast = selector.type
-                selector.regex = selector.regex or "\w+"
+                selector.regex = selector.regex or "\w[\w\s]*\w|\w"
             elif selector.type == int:
                 output_cast = selector.type
                 selector.regex = selector.regex or "\d+"
