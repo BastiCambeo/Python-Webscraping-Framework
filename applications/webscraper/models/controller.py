@@ -12,6 +12,18 @@ import logging  # support for logging to console (debuggin)
 
 logging.getLogger().setLevel(logging.INFO)
 
+def string_to_float(string):
+    first = "," if string.find(",") < string.find(".") else "."
+    second = "." if first == "," else ","
+    string = string.replace(first, "")  # Remove the thousands separator
+
+    if string.count(second) > 1 or len(string) - string.find(second) == 4:  # If the remaining separator has a count greater than 1 or has exactly 3 digits behind it => it's a thousands separator
+        string = string.replace(second, "") # Remove the thousands separator
+
+    string = string.replace(second, ".") # Convert decimal separator to English format
+
+    return float(string)
+
 class Task(object):
     _STRING_TYPES = {
         unicode: "string",
@@ -27,15 +39,30 @@ class Task(object):
 
     class Selector(object):  # contains information for selecting a ressource on a xml/html page
         def __init__(self, xpath, name=None, type=None, regex=None):
+            regex = ".*" if regex == "None" else regex
+
+            if type and isinstance(type, basestring):
+                ## type can be a type or string representation of a type ##
+                self.type = Task._STRING_TYPES[type]
+
+            if type in [unicode, str]:
+                self.output_cast = type
+                regex = regex or "\w[\w\s]*\w|\w"
+            elif type == int:
+                self.output_cast = lambda s : int(string_to_float(s))
+                regex = regex or "\d[\d.,]+"
+            elif type == float:
+                self.output_cast = string_to_float
+                regex = regex or "\d[\d.,]+"
+            elif type == datetime.datetime:
+                self.output_cast = lambda data: datetime.datetime(*(feedparser._parse_date(data)[:6]))
+                regex = regex or "\d+ \w+ \d+"
+
             self.name = name
             self.xpath = xpath
-            self.regex = None if regex == "None" else regex
+            self.regex = regex
+            self.type = type or unicode
 
-            ## type can be a type or string representation of a type ##
-            if isinstance(type, basestring):
-                self.type = Task._STRING_TYPES[type]
-            else:
-                self.type = type
 
         @property
         def string_type(self):
@@ -46,21 +73,26 @@ class Task(object):
             return [Task.Selector(name=task_row.selector_names[i], xpath=task_row.selector_xpaths[i], regex=task_row.selector_regexes[i], type=Task._STRING_TYPES[task_row.selector_types[i]]) for i in range(len(task_row.selector_names))]
 
 
-    def __init__(self, name, url_generator, period, selectors, creation_datetime=None):
+    def __init__(self, name, url_generator, selectors, creation_datetime=None, table_name=None, period=0):
         self.name = name
+        self.table_name = table_name or name
         self.url_generator = url_generator
         self.selectors = selectors
         self.period = period
         self.creation_datetime = creation_datetime or datetime.datetime.now()
 
     @property
+    def is_generated_url(self):
+        return "%s" in self.url_generator
+
+    @property
     def urls(self):
         ## url_generator may be a simple string, OR [url containing %s][database-table][database-field]. In the latter case, multiple urls will be created from the given specification. ##
         ## This way it is possible to define recursive crawlers, that successively add new pages to its own urls ##
-        if "%s" in self.url_generator:
+        if self.is_generated_url:
             splits = self.url_generator[1:-1].split("][")
             rows = db().select(db[splits[1]].ALL)
-            return {splits[0] % row[splits[2]] for row in set(rows)}  # Convert result into a set to remove duplicates
+            return {splits[0] % row[splits[2]] for row in set(rows) if row[splits[2]]}  # Convert result into a set to remove duplicates
         else:
             return {self.url_generator}
 
@@ -68,6 +100,7 @@ class Task(object):
     def _define_tables():
         db.define_table('Task',
             Field("name", type="string", unique=True),
+            Field("table_name", type="string"),
             Field("url_generator", type="string"),
             Field("creation_datetime", type="datetime", default=request.now),
             Field("period", type="integer", default=10),  # in seconds
@@ -81,12 +114,13 @@ class Task(object):
 
         for task_row in db().select(db.Task.ALL):
             fields = [Field(selector.name, type=selector.string_type) for selector in Task.Selector.from_task_row(task_row)]
-            db.define_table(task_row.name, *fields, redefine=True)
+            db.define_table(task_row.table_name, *fields, redefine=True)
 
     def put(self):
         """ Serializes the entity into the database """
         kwargs = {
             "name": self.name,
+            "table_name": self.table_name,
             "url_generator": self.url_generator,
             "creation_datetime": self.creation_datetime,
             "period": self.period,
@@ -101,6 +135,7 @@ class Task(object):
     def from_task_row(task_row):
         return Task(
             name=task_row.name,
+            table_name=task_row.table_name,
             url_generator=task_row.url_generator,
             period=task_row.period,
             creation_datetime=task_row.creation_datetime,
@@ -124,42 +159,51 @@ class Task(object):
 
     def delete_results(self):
         try:
-            db[self.name].drop()
+            db[self.table_name].drop()
         except Exception as e:
             pass
+        Task._define_tables()
 
     def get_results(self):
-        task_rows = db().select(db[self.name].ALL)
+        task_rows = db().select(db[self.table_name].ALL)
         return [tuple(task_row.as_dict()[selector.name] for selector in self.selectors) for task_row in task_rows]
 
     @staticmethod
     def delete_all_results():
         for task in Task.get_all():
             task.delete_results()
+        Task._define_tables()
 
-    def run(self, store=True, return_result=False, delete_previous_results=True):
-        if store and delete_previous_results:
-            self.delete_results()
-            Task._define_tables()
+    @staticmethod
+    def delete_all_tasks():
+        scheduler.terminate_process()
+        Task.delete_all_results()
+        db.scheduler_task.drop()
+        db.scheduler_run.drop()
+        db.Task.drop()
+        Task._define_tables()
 
-        result = []
+    def run(self, store=True, return_result=False):
+        partial_result = result = []
         visited_urls = set()
-        remaining_urls = self.urls - visited_urls
+        remaining_urls = self.urls
 
-        while remaining_urls: #and len(visited_urls) < 10:  # urls may change during iteration. Therefore for-each is not applicable.
+        while remaining_urls:  # and len(visited_urls) < 10:  # urls may change during iteration. Therefore for-each is not applicable.
             url = remaining_urls.pop()
+
+            partial_result = Scraper.http_request(url, selectors=self.selectors)
+
+            ## save result in database ##
+            if partial_result and store:
+                for row in partial_result:
+                    row_dict = {self.selectors[i].name: data for i, data in enumerate(row)}  # map selector names and data together
+                    db[self.table_name].update_or_insert(**row_dict)
+                db.commit()
+
+            result += partial_result
             visited_urls |= {url}
-            remaining_urls = self.urls - visited_urls
+            remaining_urls = self.urls - visited_urls  # Need to be evaluated after new results have committed (For recursive Crawler)
             logging.warning("%s/%s" % (len(visited_urls), len(remaining_urls)+len(visited_urls)))
-
-            result += Scraper.http_request(url, selectors=self.selectors)
-
-        ## save result in database ##
-        if result and store:
-            for row in result:
-                row_dict = {self.selectors[i].name: data for i, data in enumerate(row)}  # map selector names and data together
-                db[self.name].update_or_insert(**row_dict)
-            db.commit()
 
         if return_result:
             return result
@@ -183,19 +227,6 @@ class Scraper(object):
         for selector in selectors:
             nodes = parsed_tree.xpath(selector.xpath)
 
-            if selector.type in [unicode, str]:
-                output_cast = selector.type
-                selector.regex = selector.regex or "\w[\w\s]*\w|\w"
-            elif selector.type == int:
-                output_cast = selector.type
-                selector.regex = selector.regex or "\d+"
-            elif selector.type == float:
-                output_cast = selector.type
-                selector.regex = selector.regex or "\d+\.\d+"
-            elif selector.type == datetime.datetime:
-                output_cast = lambda data: datetime.datetime(*(feedparser._parse_date(data)[:6]))
-                selector.regex = selector.regex or "\d+ \w+ \d+"
-
             if selector.regex:
                 ## Apply regex to every single node ##
                 selector_results = []
@@ -211,8 +242,8 @@ class Scraper(object):
                 selector_results = nodes
 
             ## auto cast result type##
-            if output_cast:
-                selector_results = [output_cast(data) for data in selector_results]
+            if hasattr(selector, "output_cast"):
+                selector_results = [selector.output_cast(data) for data in selector_results]
             selectors_results += [selector_results]
 
         ## convert selector results from a tuple of lists to a list of tuples ##
