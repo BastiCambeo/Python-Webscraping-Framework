@@ -40,12 +40,14 @@ def user():
     return dict(form=auth())
 
 @cache.action()
+@auth.requires_login()
 def download():
     """
     allows downloading of uploaded files
     http://..../[app]/default/download/[filename]
     """
-    return response.download(request, db)
+    path = os.path.join('applications', 'webscraper', 'uploads',request.args[-1])
+    return response.stream(path, chunk_size=64*1024, request=request)
 
 
 def call():

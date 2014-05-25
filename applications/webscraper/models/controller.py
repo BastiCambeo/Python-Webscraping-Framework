@@ -9,7 +9,9 @@ import json  # for storing of dynamically schemed data
 import feedparser  # autodetection of date formats
 import datetime  # date / time support
 import logging  # support for logging to console (debuggin)
-
+import time  # support for sleep
+import xlwt  # Excel export support
+import os  # support for filesystem and path manipulation
 logging.getLogger().setLevel(logging.INFO)
 
 def string_to_float(string):
@@ -23,6 +25,9 @@ def string_to_float(string):
     string = string.replace(second, ".") # Convert decimal separator to English format
 
     return float(string)
+
+s = lambda unicode_var: unicode_var.encode("utf-8") if isinstance(unicode_var, unicode) else unicode_var  # use s(unicode) to encode a unicode into a byte string
+uni = lambda string_var: string_var if not isinstance(string_var, basestring) and not isinstance(string_var, list) else string_var.decode("utf-8") if not hasattr(string_var, '__iter__') else [s.decode("utf-8") for s in string_var]  # use uni(byte_string_encoded_var) for conversion into unicode
 
 class Task(object):
     _STRING_TYPES = {
@@ -155,7 +160,7 @@ class Task(object):
 
     def schedule(self):
         db(db.scheduler_task.uuid == self.name).delete()
-        scheduler.queue_task('run_by_name', uuid=self.name, pvars=dict(name=self.name), repeats=0, period=self.period, immediate=True, retry_failed=-1, timeout=3600)  # repeats=0 and retry_failed=-1 means indefinitely
+        scheduler.queue_task('run_by_name', uuid=self.name, pvars=dict(name=self.name), repeats=0, period=self.period, immediate=True, retry_failed=-1, timeout=10000)  # repeats=0 and retry_failed=-1 means indefinitely
 
     def delete_results(self):
         try:
@@ -164,9 +169,14 @@ class Task(object):
             pass
         Task._define_tables()
 
-    def get_results(self):
+    def get_results(self, with_title=False):
         task_rows = db().select(db[self.table_name].ALL)
-        return [tuple(task_row.as_dict()[selector.name] for selector in self.selectors) for task_row in task_rows]
+
+        result = [tuple(task_row.as_dict()[selector.name] for selector in self.selectors) for task_row in task_rows]
+        if with_title:
+            result = [tuple(selector.name for selector in self.selectors)] + result
+
+        return result
 
     @staticmethod
     def delete_all_results():
