@@ -95,11 +95,11 @@ class Task(object):
         ## url_generator may be a simple string, OR [url containing %s][database-table][database-field]. In the latter case, multiple urls will be created from the given specification. ##
         ## This way it is possible to define recursive crawlers, that successively add new pages to its own urls ##
         if self.is_generated_url:
-            splits = self.url_generator[1:-1].split("][")
-            rows = db().select(db[splits[1]].ALL)
-            return {splits[0] % row[splits[2]] for row in set(rows) if row[splits[2]]}  # Convert result into a set to remove duplicates
+            url, table, column = self.url_generator[1:-1].split("][")
+            rows = db().select(db[table].ALL)
+            return set(url % row[column] for row in set(rows) if row[column])  # Convert result into a set to remove duplicates
         else:
-            return {self.url_generator}
+            return set(self.url_generator.split(" "))
 
     @staticmethod
     def _define_tables():

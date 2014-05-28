@@ -7,6 +7,7 @@ def add_tasks():
         task.put()
         if task.period:
             task.schedule()
+    redirect("/")
 
 def list_tasks():
     return scheduler.tasks

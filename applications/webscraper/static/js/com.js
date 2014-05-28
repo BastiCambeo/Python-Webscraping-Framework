@@ -32,20 +32,6 @@ function delete_results(name) {
 	});
 }
 
-function reload_tasks(name) {
-    $.ajax({
-		url:"/ajax/add_tasks",
-        type: "POST",
-        success: function() {
-            window.location.reload();
-        },
-        error: function(xhr, status, error)
-        {
-        	window.location.href = "http://localhost/admin/default/errors/webscraper";
-        }
-	});
-}
-
 function delete_task(name) {
     $.ajax({
 		url:"/ajax/delete_task",

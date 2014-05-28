@@ -24,25 +24,15 @@ tasks = [
     ),
 
     Task(
-        name="Kaltmieten_Muenchen",  # task name
-        table_name="Wohnungen",
-        url_generator="http://www.immobilienscout24.de/Suche/S-T/Wohnung-Miete/Bayern/Muenchen",
+        name="Wohnungen",  # task name
+        url_generator="http://www.immobilienscout24.de/Suche/S-T/Wohnung-Miete/Bayern/Muenchen http://www.immobilienscout24.de/Suche/S-T/Wohnung-Miete/Berlin/Berlin",
         selectors=[
             Task.Selector(name="wohnungs_id", xpath="""//span[@class="title"]//a/@href""", type=int),
             Task.Selector(name="naechste_seite", xpath="""//span[@class="nextPageText"]/..//@href"""),
         ],
     ),
     Task(
-        name="Kaltmieten_Berlin",  # task name
-        table_name="Wohnungen",
-        url_generator="http://www.immobilienscout24.de/Suche/S-T/Wohnung-Miete/Berlin/Berlin",
-        selectors=[
-            Task.Selector(name="wohnungs_id", xpath="""//span[@class="title"]//a/@href""", type=int),
-            Task.Selector(name="naechste_seite", xpath="""//span[@class="nextPageText"]/..//@href"""),
-        ],
-    ),
-    Task(
-        name="Kaltmieten_Rec",  # task name
+        name="Wohnungen_Rec",  # task name
         table_name="Wohnungen",
         url_generator="[http://www.immobilienscout24.de%s][Wohnungen][naechste_seite]",
         selectors=[
@@ -50,7 +40,6 @@ tasks = [
             Task.Selector(name="naechste_seite", xpath="""//span[@class="nextPageText"]/..//@href"""),
         ],
     ),
-
     Task(
         name="Wohnungsdetails",  # task name
         url_generator="[http://www.immobilienscout24.de/expose/%s][Wohnungen][wohnungs_id]",
