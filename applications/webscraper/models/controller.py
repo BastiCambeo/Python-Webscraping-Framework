@@ -12,6 +12,8 @@ import logging  # support for logging to console (debuggin)
 import time  # support for sleep
 import xlwt  # Excel export support
 import os  # support for filesystem and path manipulation
+from gluon.storage import Storage  # Support for dictionary container Storage
+
 logging.getLogger().setLevel(logging.INFO)
 
 def string_to_float(string):
@@ -43,8 +45,9 @@ class Task(object):
     }
 
     class Selector(object):  # contains information for selecting a ressource on a xml/html page
-        def __init__(self, xpath, name=None, type=None, regex=None):
-            regex = ".*" if regex == "None" else regex
+        def __init__(self, name, xpath, type=None, regex=None):
+            if not type and not regex:
+                regex = ".*"
 
             if type and isinstance(type, basestring):
                 ## type can be a type or string representation of a type ##
@@ -77,37 +80,55 @@ class Task(object):
         def from_task_row(task_row):
             return [Task.Selector(name=task_row.selector_names[i], xpath=task_row.selector_xpaths[i], regex=task_row.selector_regexes[i], type=Task._STRING_TYPES[task_row.selector_types[i]]) for i in range(len(task_row.selector_names))]
 
+    class Url(object):
+        def __init__(self, url, table=None, column=None, start_parameter=None):
+            self.url = url
+            self.table = table
+            self.column = column
+            self.start_parameter = start_parameter
 
-    def __init__(self, name, url_generator, selectors, creation_datetime=None, table_name=None, period=0, status=""):
+        @property
+        def urls(self):
+            if self.table:  # The url must be generated
+                rows = db().select(db[self.table].ALL)
+                return {self.url % self.start_parameter} | set(self.url % row[self.column] for row in set(rows) if row[self.column])  # Convert result into a set to remove duplicates
+            else:
+                return [self.url]
+
+        @staticmethod
+        def from_task_row(task_row):
+            return [Task.Url(url=task_row.urls[i], table=task_row.url_tables[i], column=task_row.url_columns[i], start_parameter=task_row.url_start_parameters[i]) for i in range(len(task_row.urls))]
+
+
+    def __init__(self, name, urls, selectors, creation_datetime=None, table_name=None, period=0, status=""):
         self.name = name
         self.table_name = table_name or name
-        self.url_generator = url_generator
+        self.urls = urls
         self.selectors = selectors
         self.period = period
         self.creation_datetime = creation_datetime or datetime.datetime.now()
         self.status = status
 
     @property
-    def is_generated_url(self):
-        return "%s" in self.url_generator
-
-    @property
     def urls(self):
-        ## url_generator may be a simple string, OR [url containing %s][database-table][database-field]. In the latter case, multiple urls will be created from the given specification. ##
-        ## This way it is possible to define recursive crawlers, that successively add new pages to its own urls ##
-        if self.is_generated_url:
-            url, table, column = self.url_generator[1:-1].split("][")
-            rows = db().select(db[table].ALL)
-            return set(url % row[column] for row in set(rows) if row[column])  # Convert result into a set to remove duplicates
-        else:
-            return set(self.url_generator.split(" "))
+        result = set()
+        for url in self._urls:
+            result |= set(url.urls)
+        return result
+
+    @urls.setter
+    def urls(self, value):
+        self._urls = value
 
     @staticmethod
     def _define_tables():
         db.define_table('Task',
             Field("name", type="string", unique=True),
             Field("table_name", type="string"),
-            Field("url_generator", type="string"),
+            Field("urls", type="list:string"),
+            Field("url_start_parameters", type="list:string"),
+            Field("url_tables", type="list:string"),
+            Field("url_columns", type="list:string"),
             Field("creation_datetime", type="datetime", default=request.now),
             Field("period", type="integer", default=10),  # in seconds
             Field("status", type="string", default=""),
@@ -128,7 +149,10 @@ class Task(object):
         kwargs = {
             "name": self.name,
             "table_name": self.table_name,
-            "url_generator": self.url_generator,
+            "urls": [url.url for url in self._urls],
+            "url_tables": [url.table for url in self._urls],
+            "url_columns": [url.column for url in self._urls],
+            "url_start_parameters": [url.start_parameter for url in self._urls],
             "creation_datetime": self.creation_datetime,
             "period": self.period,
             "status": self.status,
@@ -145,11 +169,26 @@ class Task(object):
         self._define_tables()
 
     @staticmethod
+    def deserialize(row):
+        ## Remove 'None' serializations from db ##
+        row = Storage(row.as_dict())
+
+        for k1, v1 in list(row.iteritems()):
+            if hasattr(v1, "__iter__"):
+                for k2, v2 in enumerate(v1):
+                    v1[k2] = v2 if v2 != "None" else None
+            else:
+                row[k1] = v1 if v1 != "None" else None
+        return row
+
+    @staticmethod
     def from_task_row(task_row):
+        task_row = Task.deserialize(task_row)
+
         return Task(
             name=task_row.name,
             table_name=task_row.table_name,
-            url_generator=task_row.url_generator,
+            urls=Task.Url.from_task_row(task_row),
             period=task_row.period,
             status=task_row.status,
             creation_datetime=task_row.creation_datetime,
@@ -276,7 +315,7 @@ class Scraper(object):
             else:
                 selector_results = nodes
 
-            ## auto cast result type##
+            ## auto cast result type ##
             if hasattr(selector, "output_cast"):
                 selector_results = [selector.output_cast(data) for data in selector_results]
             selectors_results += [selector_results]
