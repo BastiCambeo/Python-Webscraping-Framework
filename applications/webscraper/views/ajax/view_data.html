@@ -11,5 +11,9 @@
     <button class="btn" onclick="delete_task('{{=task.name}}')">Delete this Tasks</button>
     <button class="btn" onclick="window.location ='/ajax/export_excel?name={{=task.name}}'">Export to Excel</button>
     {{TABLE(data)}}
+
+    <script>
+        query_task_status('{{=task.name}}');
+    </script>
 </body>
 </html>

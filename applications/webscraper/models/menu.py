@@ -24,10 +24,8 @@ response.google_analytics_id = None
 
 response.menu = [
     (T('Home'), False, URL('default', 'index'), []),
-    (SPAN('Tasks'), False, '#',
-     [(task.name, False, URL('ajax', 'view_data', vars={"name": task.name})) for task in Task.get_all()] +
-     [("Reload Tasks", False, URL('ajax', 'add_tasks'))]
-    ),
+    (SPAN('Reload Tasks'), False, URL('ajax', 'add_tasks'),
+     [(task.name, False, URL('ajax', 'view_data', vars={"name": task.name})) for task in Task.get_all()]),
     (T('Database'), False, URL('appadmin', 'index')),
     (T('Administration'), False, URL('admin', 'default', 'site')),
 ]

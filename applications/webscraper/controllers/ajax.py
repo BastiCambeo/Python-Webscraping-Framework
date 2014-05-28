@@ -13,7 +13,7 @@ def list_tasks():
     return scheduler.tasks
 
 def run():
-    return Task.run_by_name(request.vars.name)
+    Task.get_by_name(request.vars.name).schedule(repeats=1)  # run in background (own thread)
 
 def delete_results():
     return Task.get_by_name(request.vars.name).delete_results()
@@ -48,6 +48,10 @@ def delete_task():
     name = request.vars.name
     task = Task.get_by_name(name)
     task.delete()
+
+def get_task_status():
+    name = request.vars.name
+    return json.dumps({"status": Task.get_by_name(name).status})
 
 
 def test():

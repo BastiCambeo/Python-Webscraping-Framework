@@ -78,13 +78,14 @@ class Task(object):
             return [Task.Selector(name=task_row.selector_names[i], xpath=task_row.selector_xpaths[i], regex=task_row.selector_regexes[i], type=Task._STRING_TYPES[task_row.selector_types[i]]) for i in range(len(task_row.selector_names))]
 
 
-    def __init__(self, name, url_generator, selectors, creation_datetime=None, table_name=None, period=0):
+    def __init__(self, name, url_generator, selectors, creation_datetime=None, table_name=None, period=0, status=""):
         self.name = name
         self.table_name = table_name or name
         self.url_generator = url_generator
         self.selectors = selectors
         self.period = period
         self.creation_datetime = creation_datetime or datetime.datetime.now()
+        self.status = status
 
     @property
     def is_generated_url(self):
@@ -109,6 +110,7 @@ class Task(object):
             Field("url_generator", type="string"),
             Field("creation_datetime", type="datetime", default=request.now),
             Field("period", type="integer", default=10),  # in seconds
+            Field("status", type="string", default=""),
             ## selectors ##
             Field("selector_names", type="list:string"),
             Field("selector_xpaths", type="list:string"),
@@ -129,6 +131,7 @@ class Task(object):
             "url_generator": self.url_generator,
             "creation_datetime": self.creation_datetime,
             "period": self.period,
+            "status": self.status,
             "selector_names": [selector.name for selector in self.selectors],
             "selector_xpaths": [selector.xpath for selector in self.selectors],
             "selector_regexes": [selector.regex for selector in self.selectors],
@@ -148,6 +151,7 @@ class Task(object):
             table_name=task_row.table_name,
             url_generator=task_row.url_generator,
             period=task_row.period,
+            status=task_row.status,
             creation_datetime=task_row.creation_datetime,
             selectors=Task.Selector.from_task_row(task_row),
         )
@@ -163,9 +167,11 @@ class Task(object):
     def get_all():
         return [Task.from_task_row(task_row) for task_row in db().select(db.Task.ALL)]
 
-    def schedule(self):
+    def schedule(self, repeats=0):
+        self.status = "Scheduled"
+        self.put()
         self.unschedule()
-        scheduler.queue_task('run_by_name', uuid=self.name, pvars=dict(name=self.name), repeats=0, period=self.period, immediate=True, retry_failed=-1, timeout=10000)  # repeats=0 and retry_failed=-1 means indefinitely
+        scheduler.queue_task('run_by_name', uuid=self.name, pvars=dict(name=self.name), repeats=repeats, period=self.period or 1, immediate=True, retry_failed=0, timeout=10000)  # repeats=0 and retry_failed=-1 means indefinitely
 
     def unschedule(self):
         db(db.scheduler_task.uuid == self.name).delete()
@@ -209,19 +215,30 @@ class Task(object):
         while remaining_urls:  # and len(visited_urls) < 10:  # urls may change during iteration. Therefore for-each is not applicable.
             url = remaining_urls.pop()
 
+            ## Fetch Result ##
             partial_result = Scraper.http_request(url, selectors=self.selectors)
+            result += partial_result
 
-            ## save result in database ##
+            ## Store result in database ##
             if partial_result and store:
                 for row in partial_result:
                     row_dict = {self.selectors[i].name: data for i, data in enumerate(row)}  # map selector names and data together
                     db[self.table_name].update_or_insert(**row_dict)
-                db.commit()
 
-            result += partial_result
+            ## Update urls ##
             visited_urls |= {url}
             remaining_urls = self.urls - visited_urls  # Need to be evaluated after new results have committed (For recursive Crawler)
-            logging.warning("%s/%s" % (len(visited_urls), len(remaining_urls)+len(visited_urls)))
+
+            ## Log status ##
+            if len(visited_urls) != len(remaining_urls)+len(visited_urls):
+                self.status = "Progress: %s/%s" % (len(visited_urls), len(remaining_urls)+len(visited_urls))
+            else:
+                self.status = ""
+            self.put()
+            logging.warning(self.status)
+
+            ## Must commit any progress such that the recursive crawler can fetch new urls ##
+            db.commit()
 
         if return_result:
             return result

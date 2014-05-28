@@ -2,6 +2,25 @@
  * Created by Basti on 24.05.14.
  */
 
+function query_task_status(name) {
+    var intervall_handler = window.setInterval(function(){
+        $.ajax({
+            url:"/ajax/get_task_status",
+            type: "GET",
+            dataType: "json",
+            data:{name: name},
+            success: function(data) {
+                if (data.status != "") {
+                    $.web2py.flash(data.status);
+                } else {
+                    window.clearInterval(intervall_handler);
+                    $.web2py.hide_flash();
+                }
+            }
+        });
+    }, 2000);
+}
+
 function run(name) {
     $.ajax({
 		url:"/ajax/run",
