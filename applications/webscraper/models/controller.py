@@ -136,6 +136,11 @@ class Task(object):
         }
         db.Task.update_or_insert(db.Task.name == self.name, **kwargs)
 
+    def delete(self):
+        self.unschedule()
+        db(db.Task.name == self.name).delete()
+        self._define_tables()
+
     @staticmethod
     def from_task_row(task_row):
         return Task(
@@ -159,8 +164,11 @@ class Task(object):
         return [Task.from_task_row(task_row) for task_row in db().select(db.Task.ALL)]
 
     def schedule(self):
-        db(db.scheduler_task.uuid == self.name).delete()
+        self.unschedule()
         scheduler.queue_task('run_by_name', uuid=self.name, pvars=dict(name=self.name), repeats=0, period=self.period, immediate=True, retry_failed=-1, timeout=10000)  # repeats=0 and retry_failed=-1 means indefinitely
+
+    def unschedule(self):
+        db(db.scheduler_task.uuid == self.name).delete()
 
     def delete_results(self):
         try:

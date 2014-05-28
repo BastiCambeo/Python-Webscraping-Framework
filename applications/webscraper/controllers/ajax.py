@@ -42,5 +42,12 @@ def export_excel():
     w.save(path)
     redirect(URL('default', 'download', args="%s.xls" % name))
 
+@auth.requires_login()
+def delete_task():
+    name = request.vars.name
+    task = Task.get_by_name(name)
+    task.delete()
+
+
 def test():
     return int(string_to_float("3.00"))

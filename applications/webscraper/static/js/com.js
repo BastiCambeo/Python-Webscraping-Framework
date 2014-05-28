@@ -45,3 +45,18 @@ function reload_tasks(name) {
         }
 	});
 }
+
+function delete_task(name) {
+    $.ajax({
+		url:"/ajax/delete_task",
+        type: "POST",
+        data:{name: name},
+        success: function() {
+            window.location.href = "/";
+        },
+        error: function(xhr, status, error)
+        {
+        	window.location.href = "http://localhost/admin/default/errors/webscraper";
+        }
+	});
+}

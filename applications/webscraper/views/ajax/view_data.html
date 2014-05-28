@@ -8,6 +8,7 @@
 <body>
     <button class="btn" onclick="run('{{=task.name}}')">Run</button>
     <button class="btn" onclick="delete_results('{{=task.name}}')">Delete Results</button>
+    <button class="btn" onclick="delete_task('{{=task.name}}')">Delete this Tasks</button>
     <button class="btn" onclick="reload_tasks()">Reload Tasks</button>
     <button class="btn" onclick="window.location ='/ajax/export_excel?name={{=task.name}}'">Export to Excel</button>
     {{TABLE(data)}}
