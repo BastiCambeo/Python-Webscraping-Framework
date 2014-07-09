@@ -4,6 +4,7 @@ import logging  # logging support
 from lxml import html  # xpath support
 import re  # regex support
 from requests import Session  # for login required http requests
+from gluon.storage import Storage  # For easy dict access
 
 class Scraper(object):
     @staticmethod
@@ -41,9 +42,9 @@ class Scraper(object):
         ## convert selector results from a tuple of lists to a list of tuples ##
         result = []
         for y in range(len(selectors_results[0])):
-            row = []
-            for x in range(len(selectors)):
-                row += [selectors_results[x][y]] if y < len(selectors_results[x]) else [None]  # guarantee that an element is added
+            row = Storage()
+            for x, selector in enumerate(selectors):
+                row[selector.name] = selectors_results[x][y] if y < len(selectors_results[x]) else None  # guarantee that an element is added
             result += [row]
 
         return result

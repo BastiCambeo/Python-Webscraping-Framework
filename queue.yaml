@@ -6,3 +6,7 @@ queue:
 - name: default
   rate: 20/s
   bucket_size: 100
+
+- name: task
+  rate: 5/s
+  bucket_size: 100

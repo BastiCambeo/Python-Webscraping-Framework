@@ -1,35 +1,20 @@
 import json  # json support
 
-def delete_all_tasks():
-   Task.delete_all_tasks()
+assert auth.is_logged_in()  # all actions require login
 
-def add_tasks():
-    for task in Task.example_tasks():
-        task.put()
-        if task.period:
-            task.schedule()
-    redirect("/")
 
-def run():
-    Task.get_by_name(request.vars.name).schedule(repeats=1)  # run in background (own thread)
+def schedule():
+    Task.get(request.vars.name).run()
 
 def delete_results():
-    return Task.get_by_name(request.vars.name).delete_results()
+    return Task.get(request.vars.name).delete_results()
 
-@auth.requires_login()
-def view_data():
-    task = Task.get_by_name(request.vars.name)
-    response.title = task.name
-    data = task.get_results(with_title=True)
-    return dict(data=data, task=task)
-
-@auth.requires_login()
 def export_excel():
     import xlwt  # Excel export support
     import os  # support for filesystem and path manipulation
 
     name = request.vars.name
-    task = Task.get_by_name(name)
+    task = Task.get(name)
     data = task.get_results(with_title=True)
     w = xlwt.Workbook()
     ws = w.add_sheet("data")
@@ -44,12 +29,8 @@ def export_excel():
     w.save(path)
     redirect(URL('default', 'download', args="%s.xls" % name))
 
-@auth.requires_login()
 def delete_task():
-    name = request.vars.name
-    task = Task.get_by_name(name)
-    task.delete()
+    Task.get(request.vars.name).delete()
 
 def get_task_status():
-    name = request.vars.name
-    return json.dumps({"status": Task.get_by_name(name).status})
+    return json.dumps({"status": Task.get(request.vars.name).status})

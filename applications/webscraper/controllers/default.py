@@ -1,18 +1,11 @@
 # -*- coding: utf-8 -*-
-# this file is released under public domain and you can use without limitations
 
-#########################################################################
-## This is a sample controller
-## - index is the default action of any application
-## - user is required for authentication and authorization
-## - download is for downloading files uploaded in the db (does streaming)
-## - call exposes all registered services (none by default)
-#########################################################################
-
+## Add tasks to menu ##
+response.menu += (SPAN('Reload Tasks'), False, URL('ajax', 'add_tasks'),
+                    [(task.name, False, URL('ajax', 'view_data', vars={"name": task.name})) for task in Task.query().fetch()]),
 
 def index():
-    return dict()
-
+    return dict(tasks=Task.query().fetch())
 
 def user():
     """
@@ -31,7 +24,6 @@ def user():
     """
     return dict(form=auth())
 
-
 def call():
     """
     exposes services. for example:
@@ -40,3 +32,13 @@ def call():
     supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
     """
     return service()
+
+def task():
+    task = Task.get(request.args.pop())
+    response.title = task.name
+    data = task.get_results(with_title=True)
+    return dict(data=data, task=task)
+
+def test():
+    for task in Task.example_tasks():
+        task.put()
