@@ -36,9 +36,9 @@ mail.settings.sender = 'basti@katseb.de'
 mail.settings.login = 'basti@katseb.de:password'
 
 ## configure auth policy ##
-auth.settings.registration_requires_verification = True
-auth.settings.registration_requires_approval = True
-auth.settings.reset_password_requires_verification = True
+auth.settings.registration_requires_verification = False
+auth.settings.registration_requires_approval = False
+auth.settings.reset_password_requires_verification = False
 
 #########################################################################
 ## Customize your APP title, subtitle and menus here

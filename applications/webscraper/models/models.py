@@ -4,7 +4,7 @@ import logging  # support for logging to console (debuggin)
 import itertools  # helpers for iterable objects
 from gluon.storage import Storage  # Support for dictionary container Storage
 from Scraper import Scraper  # Own Web-Scraper
-from utils import *  # for generic helpers
+from util import *  # for generic helpers
 
 ## google app engine ##
 from google.appengine.ext import ndb  # Database support
@@ -19,13 +19,28 @@ class Result(ndb.Expando):
     def fetch(result_name):
         return Result.query(Result.name == result_name).fetch()
 
+    @staticmethod
+    def delete(result_name):
+        ndb.delete_multi(Result.query(Result.name == result_name).fetch(keys_only=True))
+
+    @staticmethod
+    def get_result_key(self, task):
+        key_name = ""
+
+        for selector in task.selectors:
+            if selector.is_key:
+                key_name += str(getattr(self, selector.name))
+
+        return ndb.Key(Result, None or key_name)
+
 
 class Selector(ndb.Model):
     """ Contains information for selecting a ressource on a xml/html page """
 
+    is_key = ndb.BooleanProperty(required=True, default=False)  # if given: All selectors with is_key=True are combined to the key for a result row
     name = ndb.StringProperty(required=True)
     xpath = ndb.StringProperty(required=True)
-    type = ndb.GenericProperty()
+    type = ndb.PickleProperty()
     regex = ndb.StringProperty()
 
     @property
@@ -42,14 +57,14 @@ class Selector(ndb.Model):
             return lambda data: data
 
     def __init__(self, *args, **kwds):
-        if kwds.get("type"):
-            if issubclass(self.type, basestring):
+        if "type" in kwds:
+            if issubclass(kwds["type"], basestring):
                 kwds.setdefault("regex", "\w[\w\s]*\w|\w")
-            elif issubclass(self.type, int):
+            elif issubclass(kwds["type"], int):
                 kwds.setdefault("regex", "\d[\d.,]+")
-            elif issubclass(self.type, float):
+            elif issubclass(kwds["type"], float):
                 kwds.setdefault("regex", "\d[\d.,]+")
-            elif issubclass(self.type, datetime):
+            elif issubclass(kwds["type"], datetime):
                 kwds.setdefault("regex", "\d+ \w+ \d+")
         super(Selector, self).__init__(*args, **kwds)
 
@@ -66,7 +81,7 @@ class UrlSelector(ndb.Model):
     def urls(self):
         if "%s" in self.url_raw:  # The url must be generated
             entities = Result.fetch(self.result_name)
-            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(entity, prop) for entity in entities)  # Convert result into a set to remove duplicates
+            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(entity, "prop") for entity in entities)  # Convert result into a set to remove duplicates
         else:
             return [self.url_raw]
 
@@ -89,11 +104,11 @@ class Task(ndb.Model):
 
     @property
     def urls(self):
-        return set(itertools.chain([url_selector.get_urls() for url_selector in self.url_selectors]))
+        return set(itertools.chain(*[url_selector.urls for url_selector in self.url_selectors]))
 
     @property
     def status(self):
-        return memcache.get("status_" + self.name) or "Finished"
+        return memcache.get("status_" + self.name) or ""
 
     @status.setter
     def status(self, value):
@@ -103,7 +118,8 @@ class Task(ndb.Model):
             memcache.delete("status_" + self.name)
 
     def __init__(self, *args, **kwds):
-        kwds.setdefault("result_name", self.name)
+        kwds.setdefault("key", ndb.Key(Task, kwds.pop("name", None)))
+        kwds.setdefault("result_name", kwds.get("key").id())
         super(Task, self).__init__(*args, **kwds)
 
     @staticmethod
@@ -118,7 +134,7 @@ class Task(ndb.Model):
     def delete_results(self):
         Result.delete(self.result_name)
 
-    def get_results(self, with_title=False):
+    def get_results(self):
         return Result.fetch(self.result_name)
 
     def unschedule(self):
@@ -133,7 +149,7 @@ class Task(ndb.Model):
             url = remaining_urls.pop()
 
             ## Fetch Result ##
-            partial_results = [Result(value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
+            partial_results = [Result(key=Result.get_result_key(value_dict, self), name=self.result_name, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
             results += partial_results
 
             ## Store result in database ##
@@ -155,9 +171,9 @@ class Task(ndb.Model):
             ##### Leichtathletik #####
             Task(
                 name="Leichthatletik_Sprint_100m_Herren",
-                urls=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior")],
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior")],
                 selectors=[
-                    Selector(name="athlete_id",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/@href", type=int),
+                    Selector(name="athlete_id",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/@href", type=int, is_key=True),
                     Selector(name="first_name",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/text()", type=unicode),
                     Selector(name="last_name",          xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/span/text()", type=unicode),
                     Selector(name="result_time",        xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[2]/text()", type=float),
@@ -166,9 +182,9 @@ class Task(ndb.Model):
             ),
             Task(
                 name="Leichthatletik_Athleten",
-                urls=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", result_name="Leichthatletik_Sprint_100m_Herren", prop="athlete_id")],
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", result_name="Leichthatletik_Sprint_100m_Herren", prop="athlete_id")],
                 selectors=[
-                    Selector(name="athlete_id", xpath="""//meta[@property = "og:url"]/@content""", type=int),
+                    Selector(name="athlete_id", xpath="""//meta[@property = "og:url"]/@content""", type=int, is_key=True),
                     Selector(name="name", xpath="""//div[@class = "name-container athProfile"]/h1/text()""", type=unicode),
                     Selector(name="birthday", xpath="""//div[@class = "country-date-container"]//span[4]//text()""", type=datetime),
                     Selector(name="country", xpath="""//div[@class = "country-date-container"]//span[2]//text()""", type=unicode),
@@ -178,20 +194,20 @@ class Task(ndb.Model):
             ##### ImmoScout #####
             Task(
                 name="Wohnungen",
-                urls=[
+                url_selectors=[
                     UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Bayern/Muenchen", result_name="Wohnungen", prop="naechste_seite"),
                     UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Berlin/Berlin", result_name="Wohnungen", prop="naechste_seite"),
                 ],
                 selectors=[
-                    Selector(name="wohnungs_id", xpath="""//span[@class="title"]//a/@href""", type=int),
+                    Selector(name="wohnungs_id", xpath="""//span[@class="title"]//a/@href""", type=int, is_key=True),
                     Selector(name="naechste_seite", xpath="""//span[@class="nextPageText"]/..//@href"""),
                 ],
             ),
             Task(
                 name="Wohnungsdetails",
-                urls=[UrlSelector(url_raw="http://www.immobilienscout24.de/expose/%s", result_name="Wohnungen", prop="wohnungs_id")],
+                url_selectors=[UrlSelector(url_raw="http://www.immobilienscout24.de/expose/%s", result_name="Wohnungen", prop="wohnungs_id")],
                 selectors=[
-                    Selector(name="wohnungs_id", xpath="""//a[@id="is24-ex-remember-link"]/@href""", type=int),
+                    Selector(name="wohnungs_id", xpath="""//a[@id="is24-ex-remember-link"]/@href""", type=int, is_key=True),
                     Selector(name="postleitzahl", xpath="""//div[@data-qa="is24-expose-address"]//text()""", type=int, regex="\d{5}"),
                     Selector(name="zimmeranzahl", xpath="""//dd[@class="is24qa-zimmer"]//text()""", type=int),
                     Selector(name="wohnflaeche", xpath="""//dd[@class="is24qa-wohnflaeche-ca"]//text()""", type=int),

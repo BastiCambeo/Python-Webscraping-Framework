@@ -21,19 +21,15 @@ function query_task_status(name) {
     }, 2000);
 }
 
-function run(name) {
+function schedule(name) {
     $.ajax({
-		url:"/ajax/run",
+		url:"/ajax/schedule",
 		data:{name: name},
         type: "POST",
         success: function() {
             window.location.reload();
-        },
-        error: function(xhr, status, error)
-        {
-        	window.location.href = "http://localhost/admin/default/errors/webscraper";
         }
-	});
+    });
 }
 
 function delete_results(name) {
@@ -43,10 +39,6 @@ function delete_results(name) {
         type: "POST",
         success: function() {
             window.location.reload();
-        },
-        error: function(xhr, status, error)
-        {
-        	window.location.href = "http://localhost/admin/default/errors/webscraper";
         }
 	});
 }
@@ -58,10 +50,6 @@ function delete_task(name) {
         data:{name: name},
         success: function() {
             window.location.href = "/";
-        },
-        error: function(xhr, status, error)
-        {
-        	window.location.href = "http://localhost/admin/default/errors/webscraper";
         }
 	});
 }

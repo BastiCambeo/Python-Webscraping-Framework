@@ -4,14 +4,14 @@ assert auth.is_logged_in()  # all actions require login
 
 
 def schedule():
-    Task.get(request.vars.name).run()
+    Task.get(request.vars.name).schedule()
 
 def delete_results():
     return Task.get(request.vars.name).delete_results()
 
 def export_excel():
     import xlwt  # Excel export support
-    import os  # support for filesystem and path manipulation
+    import io  # for files in memory
 
     name = request.vars.name
     task = Task.get(name)
@@ -25,9 +25,10 @@ def export_excel():
             ws.write(x, y, uni(cell))
 
     ## save ##
-    path = os.path.join('applications', 'webscraper', 'uploads','%s.xls' % name)
-    w.save(path)
-    redirect(URL('default', 'download', args="%s.xls" % name))
+    f = io.BytesIO('%s.xls' % name)
+    w.save(f)
+    response.headers["Content-Type"] = "application/vnd.ms-excel"
+    return f.read()
 
 def delete_task():
     Task.get(request.vars.name).delete()

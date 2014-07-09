@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 
-## Add tasks to menu ##
-response.menu += (SPAN('Reload Tasks'), False, URL('ajax', 'add_tasks'),
-                    [(task.name, False, URL('ajax', 'view_data', vars={"name": task.name})) for task in Task.query().fetch()]),
-
 def index():
     return dict(tasks=Task.query().fetch())
 
@@ -33,10 +29,13 @@ def call():
     """
     return service()
 
+@auth.requires_login()
 def task():
     task = Task.get(request.args.pop())
     response.title = task.name
-    data = task.get_results(with_title=True)
+    data = [(selector.name for selector in task.selectors)]
+    for result in task.get_results():
+        data += [(getattr(result, selector.name) for selector in task.selectors)]
     return dict(data=data, task=task)
 
 def test():
