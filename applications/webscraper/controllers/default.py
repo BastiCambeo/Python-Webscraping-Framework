@@ -33,9 +33,13 @@ def call():
 def task():
     task = Task.get(request.args.pop())
     response.title = task.name
-    data = [(selector.name for selector in task.selectors)]
+
+    ## Create data table ##
+    data = [tuple(selector.name for selector in task.selectors)]  # titles
+
     for result in task.get_results():
-        data += [(getattr(result, selector.name) for selector in task.selectors)]
+        data += [tuple(getattr(result, selector.name) for selector in task.selectors)]
+
     return dict(data=data, task=task)
 
 def test():
