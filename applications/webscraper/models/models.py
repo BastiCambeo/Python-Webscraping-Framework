@@ -13,15 +13,15 @@ from google.appengine.api import taskqueue, memcache  # Support for scheduled, c
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
-    name = ndb.StringProperty(required=True)
+    result_name = ndb.StringProperty(required=True)
 
     @staticmethod
     def fetch(result_name):
-        return Result.query(Result.name == result_name).fetch()
+        return Result.query(Result.result_name == result_name).fetch()
 
     @staticmethod
     def delete(result_name):
-        ndb.delete_multi(Result.query(Result.name == result_name).fetch(keys_only=True))
+        ndb.delete_multi(Result.query(Result.result_name == result_name).fetch(keys_only=True))
 
     @staticmethod
     def get_result_key(self, task):
@@ -81,7 +81,7 @@ class UrlSelector(ndb.Model):
     def urls(self):
         if "%s" in self.url_raw:  # The url must be generated
             entities = Result.fetch(self.result_name)
-            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(entity, "prop") for entity in entities)  # Convert result into a set to remove duplicates
+            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(entity, self.prop) for entity in entities)  # Convert result into a set to remove duplicates
         else:
             return [self.url_raw]
 
@@ -114,6 +114,7 @@ class Task(ndb.Model):
     def status(self, value):
         if value:
             memcache.set("status_" + self.name, value)
+            logging.warning(value)
         else:
             memcache.delete("status_" + self.name)
 
@@ -149,7 +150,7 @@ class Task(ndb.Model):
             url = remaining_urls.pop()
 
             ## Fetch Result ##
-            partial_results = [Result(key=Result.get_result_key(value_dict, self), name=self.result_name, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
+            partial_results = [Result(key=Result.get_result_key(value_dict, self), result_name=self.result_name, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
             results += partial_results
 
             ## Store result in database ##
