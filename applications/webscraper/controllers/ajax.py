@@ -22,11 +22,12 @@ def export_excel():
     ## write ##
     for x, row in enumerate(data):
         for y, cell in enumerate(row):
-            ws.write(x, y, uni(cell))
+            ws.write(x, y, cell)
 
     ## save ##
     f = io.BytesIO('%s.xls' % name)
     w.save(f)
+    f.seek(0)
     response.headers["Content-Type"] = "application/vnd.ms-excel"
     return f.read()
 

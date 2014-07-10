@@ -9,7 +9,7 @@
     <button class="btn" onclick="schedule('{{=task.name}}')">Schedule</button>
     <button class="btn" onclick="delete_results('{{=task.name}}')">Delete Results</button>
     <button class="btn" onclick="delete_task('{{=task.name}}')">Delete this Tasks</button>
-    <button class="btn" onclick="window.location ='/ajax/export_excel?name={{=task.name}}'">Export to Excel</button>
+    <button class="btn" onclick='window.location ="{{=URL('ajax', 'export_excel.xls', vars={'name': task.name})}}"'>Export to Excel</button>
     {{TABLE(data)}}
 
     <script>
