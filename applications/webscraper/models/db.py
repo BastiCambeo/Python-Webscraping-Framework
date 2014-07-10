@@ -12,7 +12,8 @@ else:
     ## connect to Google BigTable (optional 'google:datastore://namespace')
     db = DAL('google:datastore')
     ## store sessions and tickets there
-    session.connect(request, response, db=db)
+    from datetime import datetime, timedelta
+    session.connect(request, response, db=db, cookie_expires=datetime.now() + timedelta(days=30))
 
 
 #########################################################################
@@ -36,6 +37,7 @@ mail.settings.sender = 'basti@katseb.de'
 mail.settings.login = 'basti@katseb.de:password'
 
 ## configure auth policy ##
+auth.settings.expiration = auth.settings.long_expiration
 auth.settings.registration_requires_verification = False
 auth.settings.registration_requires_approval = False
 auth.settings.reset_password_requires_verification = False
