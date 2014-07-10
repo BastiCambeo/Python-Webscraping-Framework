@@ -31,7 +31,7 @@ class Result(ndb.Expando):
             if selector.is_key:
                 key_name += str(getattr(self, selector.name))
 
-        return ndb.Key(Result, None or key_name)
+        return ndb.Key(Task, task.key.id(), Result, None or key_name)
 
 
 class Selector(ndb.Model):
@@ -135,8 +135,19 @@ class Task(ndb.Model):
     def delete_results(self):
         Result.delete(self.result_name)
 
-    def get_results(self):
-        return Result.fetch(self.result_name)
+    def get_results(self, as_table=False):
+        results = Result.fetch(self.result_name)
+
+        if not as_table:
+            return results
+        else:
+            ## Create data table ##
+            data = [tuple(selector.name for selector in self.selectors)]  # titles
+
+            for result in results:
+                data += [tuple(getattr(result, selector.name) for selector in self.selectors)]
+
+            return data
 
     def unschedule(self):
         raise NotImplementedError

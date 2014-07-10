@@ -15,7 +15,7 @@ def export_excel():
 
     name = request.vars.name
     task = Task.get(name)
-    data = task.get_results(with_title=True)
+    data = task.get_results(as_table=True)
     w = xlwt.Workbook()
     ws = w.add_sheet("data")
 
