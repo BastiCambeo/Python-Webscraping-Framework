@@ -5,7 +5,7 @@
 function query_task_status(name) {
     var intervall_handler = window.setInterval(function(){
         $.ajax({
-            url:"/ajax/get_task_status",
+            url:"/webscraper/ajax/get_task_status",
             type: "GET",
             dataType: "json",
             data:{name: name},
@@ -23,7 +23,7 @@ function query_task_status(name) {
 
 function schedule(name) {
     $.ajax({
-		url:"/ajax/schedule",
+		url:"/webscraper/ajax/schedule",
 		data:{name: name},
         type: "POST",
         success: function() {
@@ -34,7 +34,7 @@ function schedule(name) {
 
 function delete_results(name) {
     $.ajax({
-		url:"/ajax/delete_results",
+		url:"/webscraper/ajax/delete_results",
 		data:{name: name},
         type: "POST",
         success: function() {
@@ -45,11 +45,33 @@ function delete_results(name) {
 
 function delete_task(name) {
     $.ajax({
-		url:"/ajax/delete_task",
+		url:"/webscraper/ajax/delete_task",
         type: "POST",
         data:{name: name},
         success: function() {
             window.location.href = "/";
         }
 	});
+}
+
+function swap_advanced() {
+    /* Show Advanced elements or hide them if already shown */
+
+    if ($("#swap_advanced").text() == "Advanced View") {
+        $(".advanced").show();
+        $("#swap_advanced").text("Simple View");
+    } else {
+        $(".advanced").hide();
+        $("#swap_advanced").text("Advanced View");
+    }
+}
+
+function create_new_task() {
+    /* Creates a new empty task */
+
+    var task_name = prompt("Please enter the task name", "");
+
+    if (task_name != null && task_name != "") {
+        window.location = "/webscraper/ajax/new_task?name=" + task_name
+    }
 }

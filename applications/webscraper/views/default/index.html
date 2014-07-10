@@ -4,6 +4,8 @@
 
 <ul>
     {{for task in tasks:}}
-        <li><a href="{{=URL('default', 'task', args=task.name)}}">{{=task.name}}</a></li>
+        <li><a href="{{=URL('default', 'task', vars={"name": task.name})}}">{{=task.name}}</a></li>
     {{pass}}
 </ul>
+
+<button class="btn" onclick="create_new_task()">Create New Task</button>

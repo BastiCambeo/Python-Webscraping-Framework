@@ -31,7 +31,7 @@ def call():
 
 @auth.requires_login()
 def task():
-    task = Task.get(request.args.pop())
+    task = Task.get(request.vars.name)
     response.title = task.name
 
     data = task.get_results(as_table=True)

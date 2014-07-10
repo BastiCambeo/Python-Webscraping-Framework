@@ -15,3 +15,11 @@
 .com_default_table_inner{
     margin: 0px -5px 0px -5px;
 }
+
+.advanced {
+    display: none;
+}
+
+.input_long {
+    width: 600px;
+}

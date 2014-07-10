@@ -36,3 +36,17 @@ def delete_task():
 
 def get_task_status():
     return json.dumps({"status": Task.get(request.vars.name).status})
+
+def new_task():
+    task_name = request.vars.name
+    assert not Task.get(task_name)  # Disallow overwriting of existing tasks
+    Task(name=task_name).put()
+    redirect("/webscraper/default/task/%s" % task_name)
+
+def save_task():
+    """ Takes the post request from the task form and saves the values to the task """
+    task = Task.get(request.vars.task_name)
+    url_raws = request.vars.getlist("url_raw[]")
+    task.url_selectors = [UrlSelector(url_raw=url_raws[i]) for i in range(len(url_raws))]
+    task.put()
+    redirect("/webscraper/default/task?name=%s" % task.name)

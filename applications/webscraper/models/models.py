@@ -91,7 +91,7 @@ class Task(ndb.Model):
 
     # self.key.id() := name of the tasks
     result_name = ndb.StringProperty(required=True)  # name for the result. Defaults to task_name but can also refer to other task_names for appending to external results
-    period = ndb.IntegerProperty()  # seconds between scheduled runs [if set]
+    period = ndb.IntegerProperty(required=True, default=0)  # seconds between scheduled runs [if set]
     creation_datetime = ndb.DateTimeProperty(auto_now_add=True)
     url_selectors = ndb.StructuredProperty(UrlSelector, repeated=True)  # Urls that should be crawled in this task. Can be fetched from the result of other tasks
     selectors = ndb.StructuredProperty(Selector, repeated=True)  # Selector of webpage content

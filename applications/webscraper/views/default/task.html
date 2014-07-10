@@ -2,14 +2,63 @@
 {{include "templates.html"}}
 <!DOCTYPE html>
 <html>
-<head>
-    <title></title>
-</head>
 <body>
-    <button class="btn" onclick="schedule('{{=task.name}}')">Schedule</button>
-    <button class="btn" onclick="delete_results('{{=task.name}}')">Delete Results</button>
-    <button class="btn" onclick="delete_task('{{=task.name}}')">Delete this Tasks</button>
+    <!-- Properties -->
+    <form id="task_form" method="post" action="/webscraper/ajax/save_task">
+        <input type="hidden" name="task_name" value="{{=task.name}}">
+
+        <div>
+            <h3>URLs</h3>
+
+            {{for url_selector in task.url_selectors:}}
+                <div>
+                    <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
+                </div>
+            {{pass}}
+
+            <button class="btn" onclick="remove_url_selector()">-</button>
+            <button class="btn" onclick="add_url_selector()">+</button>
+        </div>
+
+        <div>
+            <h3>Content</h3>
+
+            {{for selector in task.selectors:}}
+                <div>
+                    <input type="text" name="selector_name[]" value="{{=selector.name}}" placeholder='Player Height'>
+                    <input type="text" name="selector_xpath[]" value="{{=selector.xpath}}" placeholder='//div[class="player_height"]//text()' class="input_long">
+                    <button class="btn" onclick="preview()">Test</button>
+                </div>
+            {{pass}}
+
+            <button class="btn" onclick="remove_content_selector()">-</button>
+            <button class="btn" onclick="add_content_selector()">+</button>
+        </div>
+
+        <div class="advanced">
+            <h3>Result Name</h3>
+            <select name="result_name">
+                <option>{{=task.result_name}}</option>
+                {{for result_name in (set(t.result_name for t in Task.query().fetch()) | {task.name}) - {task.result_name}:}}
+                    <option>{{=result_name}}</option>
+                {{pass}}
+            </select>
+        </div>
+
+        <div class="advanced">
+            <h3>Scheduler Interval</h3>
+            <input type="text" name="period" value="{{=task.period}}"> Seconds (0:= Disabled)
+        </div>
+    </form>
+
+    <!-- Options -->
+    <button class="btn" onclick="$('#task_form').submit()">Save</button>
+    <button class="btn" onclick="schedule('{{=task.name}}')">Run</button>
+    <button class="btn advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
     <button class="btn" onclick='window.location ="{{=URL('ajax', 'export_excel.xls', vars={'name': task.name})}}"'>Export to Excel</button>
+    <button class="btn advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
+    <button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
+
     {{TABLE(data)}}
 
     <script>
