@@ -75,7 +75,7 @@ class UrlSelector(ndb.Model):
     def urls(self):
         if "%s" in self.url_raw:  # The url must be generated
             results = Result.fetch(self.results_key)
-            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(result, self.results_property) for result in results)  # Convert result into a set to remove duplicates
+            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(result, self.results_property) for result in results if getattr(result, self.results_property) is not None)  # Convert result into a set to remove duplicates
         else:
             return [self.url_raw]
 
