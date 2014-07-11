@@ -30,6 +30,7 @@ function schedule(name) {
             window.location.reload();
         }
     });
+    query_task_status();
 }
 
 function delete_results(name) {
@@ -93,4 +94,22 @@ function update_results_properties() {
             }
         }
     });
+}
+
+function add_url_selector() {
+    $("#url_selectors").append($(".url_selector").last().clone());
+}
+
+function remove_url_selector() {
+    if ($(".url_selector").length > 1)
+        $(".url_selector").last().remove();
+}
+
+function add_content_selector() {
+    $("#content_selectors").append($(".content_selector").last().clone());
+}
+
+function remove_content_selector() {
+    if ($(".content_selector").length > 1)
+        $(".content_selector").last().remove();
 }

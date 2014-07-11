@@ -8,47 +8,51 @@
     <div>
         <h3>URLs</h3>
 
-        {{for url_selector in task.url_selectors:}}
-            {{print repr(task.url_selectors)}}
-            <div class="url_selector">
-                <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
-                <span class="advanced">
-                    <select name="url_results_id[]" id="results_id" onchange="update_results_properties()">
-                        {{for results_key in Task.query().fetch(keys_only=True):}}
-                            <option {{="selected" if url_selector.results_key == results_key else ""}}>{{=results_key.id()}}</option>
-                        {{pass}}
-                    </select>
-                    <select name="url_results_property[]" id="results_properties"></select>
-                    <input type="text" name="url_start_parameter[]" placeholder="Initial Value" value="{{=url_selector.start_parameter}}" class="input_short">
-                </span>
-            </div>
-        {{pass}}
+        <div id="url_selectors">
+            {{for url_selector in task.url_selectors:}}
+                {{print repr(task.url_selectors)}}
+                <div class="url_selector">
+                    <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
+                    <span class="advanced">
+                        <select name="url_results_id[]" id="results_id" onchange="update_results_properties()">
+                            {{for results_key in Task.query().fetch(keys_only=True):}}
+                                <option {{="selected" if url_selector.results_key == results_key else ""}}>{{=results_key.id()}}</option>
+                            {{pass}}
+                        </select>
+                        <select name="url_results_property[]" id="results_properties"></select>
+                        <input type="text" name="url_start_parameter[]" placeholder="Initial Value" value="{{=url_selector.start_parameter}}" class="input_short">
+                    </span>
+                </div>
+            {{pass}}
+        </div>
 
-        <button class="btn" onclick="remove_url_selector()">-</button>
-        <button class="btn" onclick="add_url_selector()">+</button>
+        <button type="button" class="btn" onclick="remove_url_selector()">-</button>
+        <button type="button" class="btn" onclick="add_url_selector()">+</button>
     </div>
 
     <div>
         <h3>Content</h3>
 
-        {{for selector in task.selectors:}}
-            <div class="content_selector">
-                <input type="radio" {{="checked" if selector.is_key else ""}} name="selector_is_key[]"> Key &nbsp;&nbsp;
-                <input type="text" name="selector_name[]" value="{{=selector.name}}" placeholder='Player Height' class="input_short">
-                <input type="text" name="selector_xpath[]" value="{{=selector.xpath}}" placeholder='//div[class="player_height"]//text()' class="input_long">
-                <span class="advanced">
-                    <select name="selector_type[]">
-                        {{for i, selector_type in enumerate(Selector.TYPES):}}
-                            <option {{="selected" if selector.type == selector_type else ""}} value="{{=i}}">{{=str(selector_type)}}</option>
-                        {{pass}}
-                    </select>
-                    <input type="text" name="selector_regex[]" value="{{=selector.regex}}" placeholder='RegEx (optional)' class="input_short">
-                </span>
-            </div>
-        {{pass}}
+        <div id="content_selectors">
+           {{for selector in task.selectors:}}
+                <div class="content_selector">
+                    <input type="radio" {{="checked" if selector.is_key else ""}} name="selector_is_key[]"> Key &nbsp;&nbsp;
+                    <input type="text" name="selector_name[]" value="{{=selector.name}}" placeholder='Player Height' class="input_short">
+                    <input type="text" name="selector_xpath[]" value="{{=selector.xpath}}" placeholder='//div[class="player_height"]//text()' class="input_long">
+                    <span class="advanced">
+                        <select name="selector_type[]">
+                            {{for i, selector_type in enumerate(Selector.TYPES):}}
+                                <option {{="selected" if selector.type == selector_type else ""}} value="{{=i}}">{{=str(selector_type)}}</option>
+                            {{pass}}
+                        </select>
+                        <input type="text" name="selector_regex[]" value="{{=selector.regex}}" placeholder='RegEx (optional)' class="input_short">
+                    </span>
+                </div>
+            {{pass}}
+        </div>
 
-        <button class="btn" onclick="remove_content_selector()">-</button>
-        <button class="btn" onclick="add_content_selector()">+</button>
+        <button type="button" class="btn" onclick="remove_content_selector()">-</button>
+        <button type="button" class="btn" onclick="add_content_selector()">+</button>
     </div>
 
     <!-- Currently not needed
