@@ -63,8 +63,6 @@ response.google_analytics_id = None
 #########################################################################
 
 response.menu = [
-    (T('Home'), False, URL('default', 'index'), []),
-
     (T('Database'), False, '//localhost:8000/datastore'),
 
     (T('Administration'), False, URL('admin', 'default', 'site')),

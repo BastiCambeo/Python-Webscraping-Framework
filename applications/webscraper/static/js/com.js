@@ -57,10 +57,12 @@ function delete_task(name) {
 function swap_advanced() {
     /* Show Advanced elements or hide them if already shown */
 
-    if ($("#swap_advanced").text() == "Advanced View") {
+    if (!window.location.hash) {
+        window.location.hash = "advanced";
         $(".advanced").show();
         $("#swap_advanced").text("Simple View");
     } else {
+        window.location.hash = "";
         $(".advanced").hide();
         $("#swap_advanced").text("Advanced View");
     }
@@ -74,4 +76,21 @@ function create_new_task() {
     if (task_name != null && task_name != "") {
         window.location = "/webscraper/ajax/new_task?name=" + task_name
     }
+}
+
+function update_results_properties() {
+    /* When the results_id selection changes, the results_properties list must be updated */
+    var results_id = $("#results_id").val();
+    $.ajax({
+        url:"/webscraper/ajax/get_task_selector_names",
+        type: "GET",
+        dataType: "json",
+        data:{name: results_id},
+        success: function(selector_names) {
+            $("#results_properties").empty();
+            for (var i in selector_names) {
+                $("#results_properties").append("<option>" + selector_names[i] + "</option>")
+            }
+        }
+    });
 }

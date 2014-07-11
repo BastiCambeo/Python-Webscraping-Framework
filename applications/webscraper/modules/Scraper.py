@@ -8,7 +8,7 @@ from gluon.storage import Storage  # For easy dict access
 
 class Scraper(object):
     @staticmethod
-    def parse(html_src, selectors=None):
+    def parse(html_src, selectors=None, return_text=True):
         """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
 
         if not selectors:
@@ -19,6 +19,9 @@ class Scraper(object):
         selectors_results = []
         for selector in selectors:
             nodes = parsed_tree.xpath(selector.xpath)
+
+            if return_text:
+                nodes = [unicode(node.text) if hasattr(node, "text") else unicode(node) for node in nodes]
 
             if selector.regex:
                 ## Apply regex to every single node ##
@@ -61,9 +64,9 @@ class Scraper(object):
         return session
 
     @staticmethod
-    def http_request(url, selectors=None, session=None):
+    def http_request(url, selectors=None, session=None, return_text=True):
         """ Returns the response of an http get-request to a given url """
         logging.warning(url)  # For Debugging purposes
         session = session or Session()
         html_src = session.get(url).text
-        return Scraper.parse(html_src, selectors=selectors)
+        return Scraper.parse(html_src, selectors=selectors, return_text=return_text)

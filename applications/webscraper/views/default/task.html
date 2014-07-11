@@ -1,68 +1,85 @@
 {{extend "layout.html"}}
 {{include "templates.html"}}
-<!DOCTYPE html>
-<html>
-<body>
-    <!-- Properties -->
-    <form id="task_form" method="post" action="/webscraper/ajax/save_task">
-        <input type="hidden" name="task_name" value="{{=task.name}}">
 
-        <div>
-            <h3>URLs</h3>
+<!-- Properties -->
+<form id="task_form" method="post" action="/webscraper/ajax/save_task">
+    <input type="hidden" name="task_name" value="{{=task.name}}">
 
-            {{for url_selector in task.url_selectors:}}
-                <div>
-                    <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
-                </div>
+    <div>
+        <h3>URLs</h3>
+
+        {{for url_selector in task.url_selectors:}}
+            {{print repr(task.url_selectors)}}
+            <div class="url_selector">
+                <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
+                <span class="advanced">
+                    <select name="url_results_id[]" id="results_id" onchange="update_results_properties()">
+                        {{for results_key in Task.query().fetch(keys_only=True):}}
+                            <option {{="selected" if url_selector.results_key == results_key else ""}}>{{=results_key.id()}}</option>
+                        {{pass}}
+                    </select>
+                    <select name="url_results_property[]" id="results_properties"></select>
+                    <input type="text" name="url_start_parameter[]" placeholder="Initial Value" value="{{=url_selector.start_parameter}}" class="input_short">
+                </span>
+            </div>
+        {{pass}}
+
+        <button class="btn" onclick="remove_url_selector()">-</button>
+        <button class="btn" onclick="add_url_selector()">+</button>
+    </div>
+
+    <div>
+        <h3>Content</h3>
+
+        {{for selector in task.selectors:}}
+            <div class="content_selector">
+                <input type="radio" {{="checked" if selector.is_key else ""}} name="selector_is_key[]"> Key &nbsp;&nbsp;
+                <input type="text" name="selector_name[]" value="{{=selector.name}}" placeholder='Player Height' class="input_short">
+                <input type="text" name="selector_xpath[]" value="{{=selector.xpath}}" placeholder='//div[class="player_height"]//text()' class="input_long">
+                <span class="advanced">
+                    <select name="selector_type[]">
+                        {{for i, selector_type in enumerate(Selector.TYPES):}}
+                            <option {{="selected" if selector.type == selector_type else ""}} value="{{=i}}">{{=str(selector_type)}}</option>
+                        {{pass}}
+                    </select>
+                    <input type="text" name="selector_regex[]" value="{{=selector.regex}}" placeholder='RegEx (optional)' class="input_short">
+                </span>
+            </div>
+        {{pass}}
+
+        <button class="btn" onclick="remove_content_selector()">-</button>
+        <button class="btn" onclick="add_content_selector()">+</button>
+    </div>
+
+    <!-- Currently not needed
+    <div class="advanced">
+        <h3>Result Table</h3>
+        <select name="results_id">
+            {{for results_key in Task.query().fetch(keys_only=True):}}
+                <option {{="selected" if task.results_key == results_key else ""}}>{{=results_key.id()}}</option>
             {{pass}}
+        </select>
+    </div>
+    -->
 
-            <button class="btn" onclick="remove_url_selector()">-</button>
-            <button class="btn" onclick="add_url_selector()">+</button>
-        </div>
+    <div class="advanced">
+        <h3>Scheduler Interval</h3>
+        <input type="text" name="period" value="{{=task.period}}" class="input_short"> Seconds (0:= Disabled)
+    </div>
+</form>
 
-        <div>
-            <h3>Content</h3>
+<!-- Options -->
+<button class="btn" onclick="$('#task_form').submit()">Save</button>
+<button class="btn" onclick="schedule('{{=task.name}}')">Run</button>
+<button class="btn advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
+<button class="btn advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
+<button class="btn" onclick='window.location ="{{=URL('ajax', 'export_excel.xls', vars={'name': task.name})}}"'>Export to Excel</button>
+<button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
 
-            {{for selector in task.selectors:}}
-                <div>
-                    <input type="text" name="selector_name[]" value="{{=selector.name}}" placeholder='Player Height'>
-                    <input type="text" name="selector_xpath[]" value="{{=selector.xpath}}" placeholder='//div[class="player_height"]//text()' class="input_long">
-                    <button class="btn" onclick="preview()">Test</button>
-                </div>
-            {{pass}}
+{{TABLE(data)}}
 
-            <button class="btn" onclick="remove_content_selector()">-</button>
-            <button class="btn" onclick="add_content_selector()">+</button>
-        </div>
-
-        <div class="advanced">
-            <h3>Result Name</h3>
-            <select name="result_name">
-                <option>{{=task.result_name}}</option>
-                {{for result_name in (set(t.result_name for t in Task.query().fetch()) | {task.name}) - {task.result_name}:}}
-                    <option>{{=result_name}}</option>
-                {{pass}}
-            </select>
-        </div>
-
-        <div class="advanced">
-            <h3>Scheduler Interval</h3>
-            <input type="text" name="period" value="{{=task.period}}"> Seconds (0:= Disabled)
-        </div>
-    </form>
-
-    <!-- Options -->
-    <button class="btn" onclick="$('#task_form').submit()">Save</button>
-    <button class="btn" onclick="schedule('{{=task.name}}')">Run</button>
-    <button class="btn advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
-    <button class="btn" onclick='window.location ="{{=URL('ajax', 'export_excel.xls', vars={'name': task.name})}}"'>Export to Excel</button>
-    <button class="btn advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
-    <button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
-
-    {{TABLE(data)}}
-
-    <script>
-        query_task_status('{{=task.name}}');
-    </script>
-</body>
-</html>
+<script>
+    swap_advanced();swap_advanced();  // set current view
+    update_results_properties();  // Initialize the property list
+    query_task_status('{{=task.name}}');  // Show the tasks status while it is running
+</script>

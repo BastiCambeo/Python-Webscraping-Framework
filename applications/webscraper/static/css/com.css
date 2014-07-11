@@ -21,5 +21,8 @@
 }
 
 .input_long {
-    width: 600px;
+    width: 500px;
+}
+.input_short {
+    width: 105px;
 }

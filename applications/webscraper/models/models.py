@@ -13,39 +13,33 @@ from google.appengine.api import taskqueue, memcache  # Support for scheduled, c
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
-    result_name = ndb.StringProperty(required=True)
+    results_key = ndb.KeyProperty(kind="Task", required=True)
+
+    def __init__(self, *args, **kwds):
+        super(Result, self).__init__(*args, **kwds)
 
     @staticmethod
-    def fetch(result_name):
-        return Result.query(Result.result_name == result_name).fetch()
+    def fetch(results_key):
+        return Result.query(Result.results_key == results_key).fetch()
 
     @staticmethod
-    def delete(result_name):
-        ndb.delete_multi(Result.query(Result.result_name == result_name).fetch(keys_only=True))
-
-    @staticmethod
-    def get_result_key(self, task):
-        key_name = ""
-
-        for selector in task.selectors:
-            if selector.is_key:
-                key_name += str(getattr(self, selector.name))
-
-        return ndb.Key(Task, task.key.id(), Result, None or key_name)
+    def delete(results_key):
+        ndb.delete_multi(Result.query(Result.results_key == results_key).fetch(keys_only=True))
 
 
 class Selector(ndb.Model):
     """ Contains information for selecting a ressource on a xml/html page """
+    TYPES = [str, unicode, int, float, datetime]
 
     is_key = ndb.BooleanProperty(required=True, default=False)  # if given: All selectors with is_key=True are combined to the key for a result row
-    name = ndb.StringProperty(required=True)
-    xpath = ndb.StringProperty(required=True)
-    type = ndb.PickleProperty()
-    regex = ndb.StringProperty()
+    name = ndb.StringProperty(required=True, default="")
+    xpath = ndb.StringProperty(required=True, default="")
+    type = ndb.PickleProperty(required=True, default=str)
+    regex = ndb.StringProperty(required=True, default="")
 
     @property
     def output_cast(self):
-        if issubclass(self.type, basestring):
+        if issubclass(self.type, unicode):
             return unicode
         elif issubclass(self.type, int):
             return lambda s: int(str2float(s))
@@ -53,12 +47,12 @@ class Selector(ndb.Model):
             return str2float
         elif issubclass(self.type, datetime):
             return lambda data: datetime(*(feedparser._parse_date(data)[:6]))
-        else:
+        elif issubclass(self.type, str):
             return lambda data: data
 
     def __init__(self, *args, **kwds):
         if "type" in kwds:
-            if issubclass(kwds["type"], basestring):
+            if issubclass(kwds["type"], unicode):
                 kwds.setdefault("regex", "\w[\w\s]*\w|\w")
             elif issubclass(kwds["type"], int):
                 kwds.setdefault("regex", "\d[\d.,]+")
@@ -72,16 +66,16 @@ class Selector(ndb.Model):
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
 
-    url_raw = ndb.StringProperty(required=True)
-    result_name = ndb.StringProperty()
-    prop = ndb.StringProperty()
-    start_parameter = ndb.StringProperty()
+    url_raw = ndb.StringProperty(required=True, default="")
+    results_key = ndb.KeyProperty(kind="Task", required=True)
+    results_property = ndb.StringProperty(required=True, default="")
+    start_parameter = ndb.StringProperty(required=True, default="")
 
     @property
     def urls(self):
         if "%s" in self.url_raw:  # The url must be generated
-            entities = Result.fetch(self.result_name)
-            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(entity, self.prop) for entity in entities)  # Convert result into a set to remove duplicates
+            results = Result.fetch(self.results_key)
+            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(result, self.results_property) for result in results)  # Convert result into a set to remove duplicates
         else:
             return [self.url_raw]
 
@@ -90,9 +84,9 @@ class Task(ndb.Model):
     """ A Webscraper Task """
 
     # self.key.id() := name of the tasks
-    result_name = ndb.StringProperty(required=True)  # name for the result. Defaults to task_name but can also refer to other task_names for appending to external results
+    results_key = ndb.KeyProperty(kind="Task", required=True)  # name for the result. Defaults to task_name but can also refer to other task_names for appending to external results
     period = ndb.IntegerProperty(required=True, default=0)  # seconds between scheduled runs [if set]
-    creation_datetime = ndb.DateTimeProperty(auto_now_add=True)
+    creation_datetime = ndb.DateTimeProperty(required=True, auto_now_add=True)
     url_selectors = ndb.StructuredProperty(UrlSelector, repeated=True)  # Urls that should be crawled in this task. Can be fetched from the result of other tasks
     selectors = ndb.StructuredProperty(Selector, repeated=True)  # Selector of webpage content
 
@@ -118,14 +112,26 @@ class Task(ndb.Model):
         else:
             memcache.delete("status_" + self.name)
 
+    @property
+    def key_selectors(self):
+        return [selector for selector in self.selectors if selector.is_key]
+
     def __init__(self, *args, **kwds):
         kwds.setdefault("key", ndb.Key(Task, kwds.pop("name", None)))
-        kwds.setdefault("result_name", kwds.get("key").id())
+        if kwds.get("key").id():
+            ## Holds only on new creations, not on datastore retrievals ##
+            kwds.setdefault("results_key", kwds.get("key"))
+            kwds.setdefault("selectors", [Selector(is_key=True)])
+            kwds.setdefault("url_selectors", [UrlSelector(results_key=self.key)])
         super(Task, self).__init__(*args, **kwds)
 
     @staticmethod
     def get(name):
         return ndb.Key(Task, name).get()
+
+    def get_result_key(self, result_value_dict):
+        result_id = u"".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors])
+        return ndb.Key(Task, self.name, Result, None or result_id)
 
     def delete(self):
         self.unschedule()
@@ -133,10 +139,10 @@ class Task(ndb.Model):
         self.key.delete()
 
     def delete_results(self):
-        Result.delete(self.result_name)
+        Result.delete(self.results_key)
 
     def get_results(self, as_table=False):
-        results = Result.fetch(self.result_name)
+        results = Result.fetch(self.results_key)
 
         if not as_table:
             return results
@@ -150,7 +156,7 @@ class Task(ndb.Model):
             return data
 
     def unschedule(self):
-        raise NotImplementedError
+        pass
 
     def schedule(self, store=True):
         results = []
@@ -161,7 +167,7 @@ class Task(ndb.Model):
             url = remaining_urls.pop()
 
             ## Fetch Result ##
-            partial_results = [Result(key=Result.get_result_key(value_dict, self), result_name=self.result_name, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
+            partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
             results += partial_results
 
             ## Store result in database ##
@@ -183,7 +189,7 @@ class Task(ndb.Model):
             ##### Leichtathletik #####
             Task(
                 name="Leichthatletik_Sprint_100m_Herren",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior")],
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", results_key=ndb.Key(Task, "Leichthatletik_Sprint_100m_Herren"))],
                 selectors=[
                     Selector(name="athlete_id",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/@href", type=int, is_key=True),
                     Selector(name="first_name",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/text()", type=unicode),
@@ -194,7 +200,7 @@ class Task(ndb.Model):
             ),
             Task(
                 name="Leichthatletik_Athleten",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", result_name="Leichthatletik_Sprint_100m_Herren", prop="athlete_id")],
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", results_key=ndb.Key(Task, "Leichthatletik_Sprint_100m_Herren"), results_property="athlete_id")],
                 selectors=[
                     Selector(name="athlete_id", xpath="""//meta[@property = "og:url"]/@content""", type=int, is_key=True),
                     Selector(name="name", xpath="""//div[@class = "name-container athProfile"]/h1/text()""", type=unicode),
@@ -207,8 +213,8 @@ class Task(ndb.Model):
             Task(
                 name="Wohnungen",
                 url_selectors=[
-                    UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Bayern/Muenchen", result_name="Wohnungen", prop="naechste_seite"),
-                    UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Berlin/Berlin", result_name="Wohnungen", prop="naechste_seite"),
+                    UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Bayern/Muenchen", results_key=ndb.Key(Task, "Wohnungen"), results_property="naechste_seite"),
+                    UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Berlin/Berlin", results_key=ndb.Key(Task, "Wohnungen"), results_property="naechste_seite"),
                 ],
                 selectors=[
                     Selector(name="wohnungs_id", xpath="""//span[@class="title"]//a/@href""", type=int, is_key=True),
@@ -217,7 +223,7 @@ class Task(ndb.Model):
             ),
             Task(
                 name="Wohnungsdetails",
-                url_selectors=[UrlSelector(url_raw="http://www.immobilienscout24.de/expose/%s", result_name="Wohnungen", prop="wohnungs_id")],
+                url_selectors=[UrlSelector(url_raw="http://www.immobilienscout24.de/expose/%s", results_key=ndb.Key(Task, "Wohnungen"), results_property="wohnungs_id")],
                 selectors=[
                     Selector(name="wohnungs_id", xpath="""//a[@id="is24-ex-remember-link"]/@href""", type=int, is_key=True),
                     Selector(name="postleitzahl", xpath="""//div[@data-qa="is24-expose-address"]//text()""", type=int, regex="\d{5}"),
