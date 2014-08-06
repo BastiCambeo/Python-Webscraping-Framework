@@ -64,12 +64,12 @@ def save_task():
                             start_parameter=request.vars.getlist("url_start_parameter[]")[i]
                           ) for i in range(len(request.vars.getlist("url_raw[]")))]
     task.selectors = [Selector(
-                            is_key=request.vars.getlist("selector_is_key[]")[i] == "on",
+                            is_key=request.vars.selector_is_key == unicode(i),
                             name=request.vars.getlist("selector_name[]")[i],
                             xpath=request.vars.getlist("selector_xpath[]")[i],
                             type=Selector.TYPES[int(request.vars.getlist("selector_type[]")[i])],
                             regex=request.vars.getlist("selector_regex[]")[i],
-                          ) for i in range(len(request.vars.getlist("selector_is_key[]")))]
+                          ) for i in range(len(request.vars.getlist("selector_name[]")))]
     task.put()
 
 def get_task_selector_names():

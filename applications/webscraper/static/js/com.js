@@ -60,25 +60,29 @@ function test(name) {
 }
 
 function delete_results(name) {
-    $.ajax({
+    if (confirm('Are you sure you want to delete all results of this task? This cannot be undone!')) {
+        $.ajax({
 		url:"/webscraper/ajax/delete_results",
 		data:{name: name},
         type: "POST",
         success: function() {
             window.location.reload();
         }
-	});
+	    });
+    }
 }
 
 function delete_task(name) {
-    $.ajax({
-		url:"/webscraper/ajax/delete_task",
-        type: "POST",
-        data:{name: name},
-        success: function() {
-            window.location.href = "/";
-        }
-	});
+    if (confirm('Are you sure you want to delete this task COMPLETELY? This cannot be undone!')) {
+        $.ajax({
+            url: "/webscraper/ajax/delete_task",
+            type: "POST",
+            data: {name: name},
+            success: function () {
+                window.location.href = "/";
+            }
+        });
+    }
 }
 
 function swap_advanced() {
@@ -133,6 +137,7 @@ function remove_url_selector() {
 
 function add_content_selector() {
     $("#content_selectors").append($(".content_selector").last().clone());
+    $("input[name=selector_is_key]").last().val(parseInt($("input[name=selector_is_key]").eq(-2).val()) + 1);
 }
 
 function remove_content_selector() {
