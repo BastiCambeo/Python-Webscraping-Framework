@@ -2,6 +2,18 @@
  * Created by Basti on 24.05.14.
  */
 
+function save() {
+    $.ajax({
+        type: "POST",
+        url: "/webscraper/ajax/save_task",
+        data: $('#task_form').serialize(),
+        success: function() {
+            $.web2py.flash("Successfully Saved");
+        },
+        async: false
+    });
+}
+
 function query_task_status(name) {
     var intervall_handler = window.setInterval(function(){
         $.ajax({
@@ -22,6 +34,7 @@ function query_task_status(name) {
 }
 
 function schedule(name) {
+    save();
     $.ajax({
 		url:"/webscraper/ajax/schedule",
 		data:{name: name},
@@ -31,6 +44,19 @@ function schedule(name) {
         }
     });
     query_task_status();
+}
+
+function test(name) {
+    save();
+    $.ajax({
+        type: "POST",
+        url: "/webscraper/ajax/test_task",
+        data: {name: name},
+        dataType: "json",
+        success: function(data) {
+            $.web2py.flash(data.results);
+        }
+    });
 }
 
 function delete_results(name) {

@@ -8,6 +8,7 @@ from util import *  # for generic helpers
 
 ## google app engine ##
 from google.appengine.ext import ndb  # Database support
+patch_ndb()
 from google.appengine.api import taskqueue, memcache  # Support for scheduled, cronjob-like tasks and memcache
 
 
@@ -158,7 +159,8 @@ class Task(ndb.Model):
     def unschedule(self):
         pass
 
-    def schedule(self, store=True):
+    def schedule(self, store=True, test=False):
+        ## TODO: do it in taskqueue and retry url errors ##
         results = []
         visited_urls = set()
         remaining_urls = self.urls
@@ -169,6 +171,10 @@ class Task(ndb.Model):
             ## Fetch Result ##
             partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
             results += partial_results
+
+            ## Only query one url in testing mode ##
+            if test:
+                break
 
             ## Store result in database ##
             if store:
@@ -188,8 +194,8 @@ class Task(ndb.Model):
         return [
             ##### Leichtathletik #####
             Task(
-                name="Leichthatletik_Sprint_100m_Herren",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", results_key=ndb.Key(Task, "Leichthatletik_Sprint_100m_Herren"))],
+                name="Leichtathletik_Sprint_100m_Herren",
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", results_key=ndb.Key(Task, "Leichtathletik_Sprint_100m_Herren"))],
                 selectors=[
                     Selector(name="athlete_id",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/@href", type=int, is_key=True),
                     Selector(name="first_name",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/text()", type=unicode),
@@ -199,8 +205,8 @@ class Task(ndb.Model):
                 ],
             ),
             Task(
-                name="Leichthatletik_Athleten",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", results_key=ndb.Key(Task, "Leichthatletik_Sprint_100m_Herren"), results_property="athlete_id")],
+                name="Leichtathletik_Athleten_Historie",
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", results_key=ndb.Key(Task, "Leichtathletik_Sprint_100m_Herren"), results_property="athlete_id")],
                 selectors=[
                     Selector(name="athlete_id", xpath="""//meta[@property = "og:url"]/@content""", type=int, is_key=True),
                     Selector(name="name", xpath="""//div[@class = "name-container athProfile"]/h1/text()""", type=unicode),

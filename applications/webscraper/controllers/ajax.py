@@ -1,10 +1,18 @@
 import json  # json support
+import traceback
 
 assert auth.is_logged_in()  # all actions require login
 
 
 def schedule():
     Task.get(request.vars.name).schedule()
+
+def test_task():
+    try:
+        return json.dumps({"results": repr(Task.get(request.vars.name).schedule(test=True))})
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"results": e.message})
 
 def delete_results():
     return Task.get(request.vars.name).delete_results()
@@ -61,7 +69,6 @@ def save_task():
                             regex=request.vars.getlist("selector_regex[]")[i],
                           ) for i in range(len(request.vars.getlist("selector_is_key[]")))]
     task.put()
-    redirect("/webscraper/default/task?name=%s" % task.name)
 
 def get_task_selector_names():
     return json.dumps([selector.name for selector in Task.get(request.vars.name).selectors])

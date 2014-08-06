@@ -2,7 +2,7 @@
 {{include "templates.html"}}
 
 <!-- Properties -->
-<form id="task_form" method="post" action="/webscraper/ajax/save_task">
+<form id="task_form">
     <input type="hidden" name="task_name" value="{{=task.name}}">
 
     <div>
@@ -73,7 +73,8 @@
 </form>
 
 <!-- Options -->
-<button class="btn" onclick="$('#task_form').submit()">Save</button>
+<button class="btn" onclick="save()">Save</button>
+<button class="btn" onclick="test('{{=task.name}}')">Test</button>
 <button class="btn" onclick="schedule('{{=task.name}}')">Run</button>
 <button class="btn advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
 <button class="btn advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
