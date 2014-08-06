@@ -2,13 +2,15 @@
  * Created by Basti on 24.05.14.
  */
 
-function save() {
+function save(reload) {
+    reload = typeof reload !== 'undefined' ? reload : true;
     $.ajax({
         type: "POST",
         url: "/webscraper/ajax/save_task",
         data: $('#task_form').serialize(),
         success: function() {
-            $.web2py.flash("Successfully Saved");
+            // $.web2py.flash("Successfully Saved");
+            if (reload) window.location.reload();
         },
         async: false
     });
@@ -34,7 +36,7 @@ function query_task_status(name) {
 }
 
 function schedule(name) {
-    save();
+    save(false);
     $.ajax({
 		url:"/webscraper/ajax/schedule",
 		data:{name: name},
@@ -43,11 +45,11 @@ function schedule(name) {
             window.location.reload();
         }
     });
-    query_task_status(name);
+    setTimeout(function() { query_task_status(name);}, 2000);
 }
 
 function test(name) {
-    save();
+    save(false);
     $.ajax({
         type: "POST",
         url: "/webscraper/ajax/test_task",

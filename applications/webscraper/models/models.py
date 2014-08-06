@@ -37,16 +37,20 @@ class Selector(ndb.Model):
     xpath = ndb.StringProperty(required=True, default="")
     def type_setter(prop, self, value):
         if issubclass(value, unicode):
-            self.regex = self.regex or "\w[\w\s]*\w|\w"
+            self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
         elif issubclass(value, int):
-            self.regex = self.regex or "\d[\d.,]+"
+            self.regex = self.regex or r"\d[\d.,]+"
         elif issubclass(value, float):
-            self.regex = self.regex or "\d[\d.,]+"
+            self.regex = self.regex or r"\d[\d.,]+"
         elif issubclass(value, datetime):
-            self.regex = self.regex or "\d+ \w+ \d+"
+            self.regex = self.regex or r"\d+ \w+ \d+"
         return value
     type = ndb.PickleProperty(required=True, default=str, setters=[type_setter])
-    regex = ndb.StringProperty(required=True, default="")
+    def regex_setter(prop, self, value):
+        if not value:
+            return self.regex  # Do not overwrite the regex that is forced by the type
+        return value
+    regex = ndb.StringProperty(required=True, default="", setters=[regex_setter])
 
     @property
     def output_cast(self):
