@@ -43,7 +43,7 @@ function schedule(name) {
             window.location.reload();
         }
     });
-    query_task_status();
+    query_task_status(name);
 }
 
 function test(name) {

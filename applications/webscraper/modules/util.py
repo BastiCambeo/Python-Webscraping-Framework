@@ -53,7 +53,7 @@ def patch_ndb():
     def model__init__(self, *args, **kwargs):
         ## init is always called on an entity, but without arguments when entity is loaded from database! ##
         self._history_values = {}
-        ndb.Model.__init__org(self, *args, **kwargs)
+        ndb.Model.__init___org(self, *args, **kwargs)
         self._is_initialized = True
     attr_replace(ndb.Model, "__init__", model__init__)
 
@@ -66,7 +66,7 @@ def patch_ndb():
         if "required" in kwargs and "repeated" in kwargs:
             del kwargs["required"]
             self._required_repeated = True  # circumvent appengine's restriction that required and repeated are mutually exclusive. Only checked at put-time
-        ndb.Property.__init__org(self, *args, **kwargs)
+        ndb.Property.__init___org(self, *args, **kwargs)
     attr_replace(ndb.Property, "__init__", property__init__)
 
 
@@ -81,15 +81,15 @@ def patch_ndb():
 
 
     ## Applies new Setters ##
-    def property_set_value(self, entity, value):
+    def property_set_value(prop, entity, value):
         ## set_value is not called if entity is loaded from database! ##
         ## Setters ##
-        for setter in self._setters:
-            value = setter(self, entity, value)
+        for setter in prop._setters:
+            value = setter(prop, entity, value)
         ## History Values ##
-        if hasattr(entity, "_is_initialized") and self._code_name not in entity._history_values:  # if entity was initialized: store initialized value (not new value) in _values_history. (When loading from database, the method is not called anyways)
-            entity._history_values[self._code_name] = list(getattr(entity, self._code_name)) if self._repeated else getattr(entity, self._code_name)  # copy mutual datatypes or they will always be updated with their original value
-        ndb.Property._set_value_org(self, entity, value)
+        if hasattr(entity, "_is_initialized") and prop._code_name not in entity._history_values:  # if entity was initialized: store initialized value (not new value) in _values_history. (When loading from database, the method is not called anyways)
+            entity._history_values[prop._code_name] = list(getattr(entity, prop._code_name)) if prop._repeated else getattr(entity, prop._code_name)  # copy mutual datatypes or they will always be updated with their original value
+        ndb.Property._set_value_org(prop, entity, value)
     attr_replace(ndb.Property, "_set_value", property_set_value)
 
     ## Introduce post_load hook (triggers after FETCH and GET) ##
@@ -108,7 +108,9 @@ def patch_ndb():
     def key_get_async(self, *args, **kwargs):
         def fetch_callback(future):
             if future.state == future.FINISHING and not future._exception:
-                future.get_result()._post_load_hook()  # Call post_load_hook
+                entity = future.get_result()
+                if hasattr(entity, "_post_load_hook"):
+                    entity._post_load_hook()  # Call post_load_hook
         future = ndb.Key.get_async_org(self, *args, **kwargs)
         future.add_immediate_callback(fetch_callback, future)
         return future

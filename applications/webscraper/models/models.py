@@ -35,7 +35,17 @@ class Selector(ndb.Model):
     is_key = ndb.BooleanProperty(required=True, default=False)  # if given: All selectors with is_key=True are combined to the key for a result row
     name = ndb.StringProperty(required=True, default="")
     xpath = ndb.StringProperty(required=True, default="")
-    type = ndb.PickleProperty(required=True, default=str)
+    def type_setter(prop, self, value):
+        if issubclass(value, unicode):
+            self.regex = self.regex or "\w[\w\s]*\w|\w"
+        elif issubclass(value, int):
+            self.regex = self.regex or "\d[\d.,]+"
+        elif issubclass(value, float):
+            self.regex = self.regex or "\d[\d.,]+"
+        elif issubclass(value, datetime):
+            self.regex = self.regex or "\d+ \w+ \d+"
+        return value
+    type = ndb.PickleProperty(required=True, default=str, setters=[type_setter])
     regex = ndb.StringProperty(required=True, default="")
 
     @property
@@ -50,19 +60,6 @@ class Selector(ndb.Model):
             return lambda data: datetime(*(feedparser._parse_date(data)[:6]))
         elif issubclass(self.type, str):
             return lambda data: data
-
-    def __init__(self, *args, **kwds):
-        if "type" in kwds:
-            if issubclass(kwds["type"], unicode):
-                kwds.setdefault("regex", "\w[\w\s]*\w|\w")
-            elif issubclass(kwds["type"], int):
-                kwds.setdefault("regex", "\d[\d.,]+")
-            elif issubclass(kwds["type"], float):
-                kwds.setdefault("regex", "\d[\d.,]+")
-            elif issubclass(kwds["type"], datetime):
-                kwds.setdefault("regex", "\d+ \w+ \d+")
-        super(Selector, self).__init__(*args, **kwds)
-
 
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """

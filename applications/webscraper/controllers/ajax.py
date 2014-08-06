@@ -9,7 +9,9 @@ def schedule():
 
 def test_task():
     try:
-        return json.dumps({"results": repr(Task.get(request.vars.name).schedule(test=True))})
+        results = Task.get(request.vars.name).schedule(test=True)
+        return json.dumps(
+            {"results": "<br>".join([repr(result._to_dict(exclude=["results_key"])) for result in results])    })
     except Exception as e:
         traceback.print_exc()
         return json.dumps({"results": e.message})
