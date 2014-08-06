@@ -42,7 +42,7 @@
                     <span class="advanced">
                         <select name="selector_type[]">
                             {{for i, selector_type in enumerate(Selector.TYPES):}}
-                                <option {{="selected" if selector.type == selector_type else ""}} value="{{=i}}">{{=str(selector_type)}}</option>
+                                <option {{="selected" if selector.type == selector_type else ""}} value="{{=i}}">{{=Selector.TYPE_STR[selector_type]}}</option>
                             {{pass}}
                         </select>
                         <input type="text" name="selector_regex[]" value="{{=selector.regex}}" placeholder='RegEx (optional)' class="input_short">

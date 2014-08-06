@@ -20,8 +20,8 @@ class Result(ndb.Expando):
         super(Result, self).__init__(*args, **kwds)
 
     @staticmethod
-    def fetch(results_key):
-        return Result.query(Result.results_key == results_key).fetch()
+    def fetch(results_key, limit=None):
+        return Result.query(Result.results_key == results_key).fetch(limit=limit)
 
     @staticmethod
     def delete(results_key):
@@ -31,6 +31,13 @@ class Result(ndb.Expando):
 class Selector(ndb.Model):
     """ Contains information for selecting a ressource on a xml/html page """
     TYPES = [str, unicode, int, float, datetime]
+    TYPE_STR = {
+        str: "anything",
+        unicode: "text",
+        int: "integer",
+        float: "float value",
+        datetime: "date or time"
+    }
 
     is_key = ndb.BooleanProperty(required=True, default=False)  # if given: All selectors with is_key=True are combined to the key for a result row
     name = ndb.StringProperty(required=True, default="")
@@ -143,8 +150,8 @@ class Task(ndb.Model):
     def delete_results(self):
         Result.delete(self.results_key)
 
-    def get_results(self, as_table=False):
-        results = Result.fetch(self.results_key)
+    def get_results(self, as_table=False, limit=1000):
+        results = Result.fetch(self.results_key, limit=limit)
 
         if not as_table:
             return results
