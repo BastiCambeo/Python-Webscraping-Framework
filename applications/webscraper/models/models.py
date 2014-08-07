@@ -3,14 +3,11 @@ from datetime import datetime  # date / time support
 import logging  # support for logging to console (debuggin)
 import itertools  # helpers for iterable objects
 from gluon.storage import Storage  # Support for dictionary container Storage
-from Scraper import Scraper  # Own Web-Scraper
+from Scraper import Scraper, Selector, UrlSelector  # Own Web-Scraper
 from util import *  # for generic helpers
-
-## google app engine ##
+from google.appengine.api import taskqueue, memcache  # Support for scheduled, cronjob-like tasks and memcache
 from google.appengine.ext import ndb  # Database support
 patch_ndb()
-from google.appengine.api import taskqueue, memcache  # Support for scheduled, cronjob-like tasks and memcache
-
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
@@ -26,78 +23,6 @@ class Result(ndb.Expando):
     @staticmethod
     def delete(results_key):
         ndb.delete_multi(Result.query(Result.results_key == results_key).fetch(keys_only=True))
-
-
-class Selector(ndb.Model):
-    """ Contains information for selecting a ressource on a xml/html page """
-    TYPES = [str, unicode, int, float, datetime]
-    TYPE_STR = {
-        str: "anything",
-        unicode: "text",
-        int: "integer",
-        float: "float value",
-        datetime: "date or time"
-    }
-
-    is_key = ndb.BooleanProperty(required=True, default=False)  # if given: All selectors with is_key=True are combined to the key for a result row
-    name = ndb.StringProperty(required=True, default="")
-    xpath = ndb.StringProperty(required=True, default="")
-    def type_setter(prop, self, value):
-        if issubclass(value, unicode):
-            self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
-        elif issubclass(value, int):
-            self.regex = self.regex or r"\d[\d.,]+"
-        elif issubclass(value, float):
-            self.regex = self.regex or r"\d[\d.,]+"
-        elif issubclass(value, datetime):
-            self.regex = self.regex or r"\d+ \w+ \d+"
-        return value
-    type = ndb.PickleProperty(required=True, default=str, setters=[type_setter])
-    def regex_setter(prop, self, value):
-        if not value:
-            return self.regex  # Do not overwrite the regex that is forced by the type
-        return value
-    regex = ndb.StringProperty(required=True, default="", setters=[regex_setter])
-
-    @property
-    def output_cast(self):
-        if issubclass(self.type, unicode):
-            return unicode
-        elif issubclass(self.type, int):
-            return lambda s: int(str2float(s))
-        elif issubclass(self.type, float):
-            return str2float
-        elif issubclass(self.type, datetime):
-            return lambda data: datetime(*(feedparser._parse_date(data)[:6]))
-        elif issubclass(self.type, str):
-            return lambda data: data
-
-class UrlSelector(ndb.Model):
-    """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
-
-    url_raw = ndb.StringProperty(required=True, default="")
-    results_key = ndb.KeyProperty(kind="Task", required=True)
-    results_property = ndb.StringProperty(required=True, default="")
-    start_parameter = ndb.StringProperty(required=True, default="")
-
-    def get_urls(self, results=None):
-        """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
-        if self.has_dynamic_url:
-
-            if self.start_parameter:
-                yield self.url_raw % self.start_parameter
-
-            results = Result.fetch(self.results_key) if results is None else results
-            for result in results:
-                if getattr(result, self.results_property) is not None:
-                    yield self.url_raw % getattr(result, self.results_property)
-
-        else:
-            yield self.url_raw
-
-    @property
-    def has_dynamic_url(self):
-        return "%s" in self.url_raw
 
 
 class Task(ndb.Model):
@@ -183,8 +108,8 @@ class Task(ndb.Model):
 
     def schedule(self, store=True, test=False):
         ## TODO: do it in taskqueue and retry url errors ##
-        visited_urls = set()
-        urls = self.urls
+        visited_urls = zipset()
+        urls = self.get_urls()
 
         for url in urls:
             visited_urls.add(url)

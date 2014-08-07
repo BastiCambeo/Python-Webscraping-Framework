@@ -115,3 +115,10 @@ def patch_ndb():
         future.add_immediate_callback(fetch_callback, future)
         return future
     attr_replace(ndb.Key, "get_async", key_get_async)
+
+import zlib
+class zipset(set):
+    """ This set does compress its content such that it comes very close to a bloomfilter without false positives """
+    def add(self, value, **kwargs):
+        return super(zipset, self).add(zlib.compress(value), **kwargs)
+
