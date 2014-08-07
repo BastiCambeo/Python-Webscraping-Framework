@@ -80,13 +80,24 @@ class UrlSelector(ndb.Model):
     results_property = ndb.StringProperty(required=True, default="")
     start_parameter = ndb.StringProperty(required=True, default="")
 
-    @property
-    def urls(self):
-        if "%s" in self.url_raw:  # The url must be generated
-            results = Result.fetch(self.results_key)
-            return {self.url_raw % self.start_parameter} | set(self.url_raw % getattr(result, self.results_property) for result in results if getattr(result, self.results_property) is not None)  # Convert result into a set to remove duplicates
+    def get_urls(self, results=None):
+        """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
+        if self.has_dynamic_url:
+
+            if self.start_parameter:
+                yield self.url_raw % self.start_parameter
+
+            results = Result.fetch(self.results_key) if results is None else results
+            for result in results:
+                if getattr(result, self.results_property) is not None:
+                    yield self.url_raw % getattr(result, self.results_property)
+
         else:
-            return [self.url_raw]
+            yield self.url_raw
+
+    @property
+    def has_dynamic_url(self):
+        return "%s" in self.url_raw
 
 
 class Task(ndb.Model):
@@ -106,10 +117,6 @@ class Task(ndb.Model):
         return str(self.key.id())
 
     @property
-    def urls(self):
-        return set(itertools.chain(*[url_selector.urls for url_selector in self.url_selectors]))
-
-    @property
     def status(self):
         return memcache.get("status_" + self.name) or ""
 
@@ -125,6 +132,10 @@ class Task(ndb.Model):
     def key_selectors(self):
         return [selector for selector in self.selectors if selector.is_key]
 
+    @property
+    def is_recursive(self):
+        return any([url_selector.has_dynamic_url and url_selector.results_key == self.results_key for url_selector in self.url_selectors])
+
     def __init__(self, *args, **kwds):
         kwds.setdefault("key", ndb.Key(Task, kwds.pop("name", None)))
         if kwds.get("key").id():
@@ -133,6 +144,9 @@ class Task(ndb.Model):
             kwds.setdefault("selectors", [Selector(is_key=True)])
             kwds.setdefault("url_selectors", [UrlSelector(results_key=self.key)])
         super(Task, self).__init__(*args, **kwds)
+
+    def get_urls(self, results=None):
+        return itertools.chain(*[url_selector.get_urls(results) for url_selector in self.url_selectors])  # Keep generators intact!
 
     @staticmethod
     def get(name):
@@ -169,33 +183,33 @@ class Task(ndb.Model):
 
     def schedule(self, store=True, test=False):
         ## TODO: do it in taskqueue and retry url errors ##
-        results = []
         visited_urls = set()
-        remaining_urls = self.urls
+        urls = self.urls
 
-        while remaining_urls:  # and len(visited_urls) < 10:  # urls may change during iteration. Therefore for-each is not applicable.
-            url = remaining_urls.pop()
+        for url in urls:
+            visited_urls.add(url)
+
+            ## Log status ##
+            self.status = "Progress: %s" % len(visited_urls)
 
             ## Fetch Result ##
             partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
-            results += partial_results
 
             ## Only query one url in testing mode ##
             if test:
                 break
 
+            ## Append new urls on recursive call ##
+            if self.is_recursive:
+                urls = itertools.chain(urls, self.get_urls(partial_results))
+
             ## Store result in database ##
             if store:
                 ndb.put_multi(partial_results)
 
-            ## Update urls ##
-            visited_urls |= {url}
-            remaining_urls = self.urls - visited_urls  # Need to be evaluated after new results have committed (For recursive Crawler)
+        self.status = None
 
-            ## Log status ##
-            self.status = "Progress: %s/%s" % (len(visited_urls), len(remaining_urls)+len(visited_urls)) if remaining_urls else None
-
-        return results
+        return partial_results
 
     @staticmethod
     def example_tasks():

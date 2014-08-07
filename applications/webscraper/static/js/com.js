@@ -32,7 +32,7 @@ function query_task_status(name) {
                 }
             }
         });
-    }, 2000);
+    }, 5000);
 }
 
 function schedule(name) {
@@ -45,7 +45,7 @@ function schedule(name) {
             window.location.reload();
         }
     });
-    setTimeout(function() { query_task_status(name);}, 2000);
+    setTimeout(function() { query_task_status(name);}, 5000);
 }
 
 function test(name) {
