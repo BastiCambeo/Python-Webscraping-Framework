@@ -31,7 +31,7 @@ class Selector(ndb.Model):
         elif issubclass(value, int):
             self.regex = self.regex or r"\d[\d.,]+"
         elif issubclass(value, float):
-            self.regex = self.regex or r"\d[\d.,]+"
+            self.regex = self.regex or r"\d[\d.,:]+"
         elif issubclass(value, datetime):
             self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
         return value
@@ -72,7 +72,6 @@ class Scraper(object):
 
         def exe(context, nodes, path):
             try:
-                print [textify(node.xpath(path).pop()) for node in nodes]
                 return [textify(node.xpath(path).pop()) for node in nodes]
             except Exception as e:
                 return ["None"]

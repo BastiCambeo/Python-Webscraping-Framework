@@ -18,17 +18,40 @@ def uni(string_var):
 
 
 def str2float(string):
-    """ Respects both German and English formatatting inclding 1000-separators """
-    first = "," if string.find(",") < string.find(".") else "."
-    second = "." if first == "," else ","
-    string = string.replace(first, "")  # Remove the thousands separator
+    """
+    Supports both German and English formatting including 1000-separators
+    >>> str2float("10.000,00")
+    10000.0
+    >>> str2float("10,000.00")
+    10000.0
 
-    if string.count(second) > 1 or len(string) - string.find(second) == 4:  # If the remaining separator has a count greater than 1 or has exactly 3 digits behind it => it's a thousands separator
-        string = string.replace(second, "")  # Remove the thousands separator
+    Supports formatted times
+    >>> str2float("10:30:45,2")
+    37845.2
+    >>> str2float("30:45,2")
+    1845.2
 
-    string = string.replace(second, ".")  # Convert decimal separator to English format
+    """
+    if ":" in string:
+        ## Time ##
+        string = string.replace(",", ".")  # convert to english separators
+        parts = map(float, string.split(":"))  # convert parts into floats
+        parts = list(reversed(parts))  # the most significant value should be last
+        for i in range(len(parts)):
+            parts[i] *= 60**i  # interprete parts as 60-ark number
+        return sum(parts)
+    else:
+        ## Float ##
+        first = "," if string.find(",") < string.find(".") else "."
+        second = "." if first == "," else ","
+        string = string.replace(first, "")  # Remove the thousands separator
 
-    return float(string)
+        if string.count(second) > 1 or len(string) - string.find(second) == 4:  # If the remaining separator has a count greater than 1 or has exactly 3 digits behind it => it's a thousands separator
+            string = string.replace(second, "")  # Remove the thousands separator
+
+        string = string.replace(second, ".")  # Convert decimal separator to English format
+
+        return float(string)
 
 
 class omnimethod(object):
