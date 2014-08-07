@@ -142,13 +142,13 @@ class Task(ndb.Model):
             visited_urls = zipset()
             visited_urls.update(self.get_urls(self.get_results()))
 
-        for url in urls:
+        for i, url in enumerate(urls):
             if remove_duplicate_urls:
                 if url in visited_urls: continue
                 visited_urls.add(url)
 
             ## Log status ##
-            self.status = "Progress: %s" % len(visited_urls)
+            self.status = "Progress: %s" % i
 
             ## Fetch Result ##
             try:
