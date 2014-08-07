@@ -135,7 +135,6 @@ class Task(ndb.Model):
         pass
 
     def schedule(self, store=True, test=False):
-        ## TODO: do it in taskqueue and retry url errors ##
         visited_urls = zipset()
         urls = self.get_urls()
 
@@ -147,7 +146,10 @@ class Task(ndb.Model):
             self.status = "Progress: %s" % len(visited_urls)
 
             ## Fetch Result ##
-            partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
+            try:
+                partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
+            except Exception as e:
+                logging.error("Failed to process '%s'" % url)
 
             ## Only query one url in testing mode ##
             if test:

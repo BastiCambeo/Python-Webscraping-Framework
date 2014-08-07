@@ -68,7 +68,10 @@ class Scraper(object):
 
         def merge_lists(context, *args):
             """ Merge the items of lists at same positions. If one list is shorter, its last element is repeated """
-            return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
+            try:
+                return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
+            except Exception as e:
+                return ["None"]
 
         def exe(context, nodes, path):
             try:
