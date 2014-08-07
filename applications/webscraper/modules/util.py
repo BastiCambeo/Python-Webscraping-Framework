@@ -139,8 +139,22 @@ def patch_ndb():
         return future
     attr_replace(ndb.Key, "get_async", key_get_async)
 
-import zlib
 class zipset(set):
     """ This set does compress its content such that it comes very close to a bloomfilter without false positives """
     def add(self, value, **kwargs):
+        import zlib
         return super(zipset, self).add(zlib.compress(value), **kwargs)
+
+    def update(self, value, **kwargs):
+        return super(zipset, self).update(zipset(value), **kwargs)
+
+    def __or__(self, y):
+        return super(zipset, self).__or__(zipset(y))
+
+    def __init__(self, *args, **kwargs):
+        if args:
+            set2 = args[0]
+            args = (zipset(),)
+            for item in set2:
+                args[0].add(item)
+        return super(zipset, self).__init__(*args, **kwargs)
