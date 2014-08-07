@@ -5,6 +5,7 @@ from lxml import html  # xpath support
 import re  # regex support
 from requests import Session  # for login required http requests
 from gluon.storage import Storage  # For easy dict access
+import feedparser  # autodetection of date formats
 from datetime import datetime  # date / time support
 from util import *  # for generic helpers
 from google.appengine.ext import ndb  # Database support
@@ -21,7 +22,7 @@ class Selector(ndb.Model):
         datetime: "date or time"
     }
 
-    is_key = ndb.BooleanProperty(required=True, default=False)  # if given: All selectors with is_key=True are combined to the key for a result row
+    is_key = ndb.BooleanProperty(required=True, default=False)
     name = ndb.StringProperty(required=True, default="")
     xpath = ndb.StringProperty(required=True, default="")
     def type_setter(prop, self, value):
@@ -32,7 +33,7 @@ class Selector(ndb.Model):
         elif issubclass(value, float):
             self.regex = self.regex or r"\d[\d.,]+"
         elif issubclass(value, datetime):
-            self.regex = self.regex or r"\d+ \w+ \d+"
+            self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
         return value
     type = ndb.PickleProperty(required=True, default=str, setters=[type_setter])
     def regex_setter(prop, self, value):
@@ -55,38 +56,22 @@ class Selector(ndb.Model):
             return lambda data: data
 
 
-class UrlSelector(ndb.Model):
-    """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
-
-    url_raw = ndb.StringProperty(required=True, default="")
-    results_key = ndb.KeyProperty(kind="Task", required=True)
-    results_property = ndb.StringProperty(required=True, default="")
-    start_parameter = ndb.StringProperty(required=True, default="")
-
-    def get_urls(self, results=None):
-        """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
-        if self.has_dynamic_url:
-
-            if self.start_parameter:
-                yield self.url_raw % self.start_parameter
-
-            results = Result.fetch(self.results_key) if results is None else results
-            for result in results:
-                if getattr(result, self.results_property) is not None:
-                    yield self.url_raw % getattr(result, self.results_property)
-
-        else:
-            yield self.url_raw
-
-    @property
-    def has_dynamic_url(self):
-        return "%s" in self.url_raw
-
-
 class Scraper(object):
     @staticmethod
-    def parse(html_src, selectors=None, return_text=True):
+    def parse(html_src, selectors=None):
         """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
+
+        from lxml import etree
+
+        def textify(node):
+            return (unicode(node.text) if hasattr(node, "text") else unicode(node)).strip()
+
+        def merge_lists(context, *args):
+            """ Merge the items of lists at same positions. If one list is shorter, its last element is repeated """
+            return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
+
+        ns = etree.FunctionNamespace(None)
+        ns['merge_lists'] = merge_lists
 
         if not selectors:
             return html_src  # nothing to do
@@ -97,8 +82,7 @@ class Scraper(object):
         for selector in selectors:
             nodes = parsed_tree.xpath(selector.xpath)
 
-            if return_text:
-                nodes = [unicode(node.text) if hasattr(node, "text") else unicode(node) for node in nodes]
+            nodes = [textify(node) for node in nodes]
 
             if selector.regex:
                 ## Apply regex to every single node ##
@@ -121,21 +105,30 @@ class Scraper(object):
 
         ## convert selector results from a tuple of lists to a list of tuples ##
         result = []
-        for y in range(len(selectors_results[0])):
+        key_selector = next((selector for selector in selectors if selector.is_key), selectors[0])
+        for y in range(len(selectors_results[selectors.index(key_selector)])):  # Take as many results, as there are results for the key selector
             row = Storage()
             for x, selector in enumerate(selectors):
-                row[selector.name] = selectors_results[x][y] if y < len(selectors_results[x]) else None  # guarantee that an element is added
+                row[selector.name] = selectors_results[x][min(y, len(selectors_results[x])-1)]
             result += [row]
         return result
 
     @staticmethod
-    def parse(html_src, selectors=None):
+    def parse2(html_src, selectors=None):
         """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
 
         if not selectors:
             return html_src  # nothing to do
 
         parsed_tree = html.document_fromstring(html_src)
+
+        key_selector = next((selector for selector in selectors if selector.is_key), selectors[0])  # retrieve a key selector, from which any other selector has specified a relative xpath
+        key_nodes = parsed_tree.xpath(key_selector.xpath)
+        result = {}
+
+        for key_node in key_nodes:
+            for selector in selectors:
+                result[selector.name] = parsed_tree.xpath(selector.xpath)
 
         selectors_results = []
         for selector in selectors:
@@ -175,7 +168,7 @@ class Scraper(object):
     def login(url, user, password):
         """ Returns the session that is yielded by the login """
         session = Session()
-        inputs = Scraper.http_request(url, selectors=[Task.Selector(xpath="//input")], session=session)
+        inputs = Scraper.http_request(url, selectors=[Selector(xpath="//input")], session=session)
         inputs[0].value = user  # TODO: more intelligent search for correct user and password field in form
         inputs[1].value = password
         data = {input.name: input.value for input in inputs}

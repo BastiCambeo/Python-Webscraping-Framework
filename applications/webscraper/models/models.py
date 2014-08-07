@@ -1,13 +1,13 @@
-import feedparser  # autodetection of date formats
 from datetime import datetime  # date / time support
 import logging  # support for logging to console (debuggin)
 import itertools  # helpers for iterable objects
 from gluon.storage import Storage  # Support for dictionary container Storage
-from Scraper import Scraper, Selector, UrlSelector  # Own Web-Scraper
+from Scraper import Scraper, Selector  # Own Web-Scraper
 from util import *  # for generic helpers
 from google.appengine.api import taskqueue, memcache  # Support for scheduled, cronjob-like tasks and memcache
 from google.appengine.ext import ndb  # Database support
 patch_ndb()
+
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
@@ -23,6 +23,34 @@ class Result(ndb.Expando):
     @staticmethod
     def delete(results_key):
         ndb.delete_multi(Result.query(Result.results_key == results_key).fetch(keys_only=True))
+
+
+class UrlSelector(ndb.Model):
+    """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
+
+    url_raw = ndb.StringProperty(required=True, default="")
+    results_key = ndb.KeyProperty(kind="Task", required=True)
+    results_property = ndb.StringProperty(required=True, default="")
+    start_parameter = ndb.StringProperty(required=True, default="")
+
+    def get_urls(self, results=None):
+        """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
+        if self.has_dynamic_url:
+
+            if self.start_parameter:
+                yield self.url_raw % self.start_parameter
+
+            results = Result.fetch(self.results_key) if results is None else results
+            for result in results:
+                if getattr(result, self.results_property) is not None:
+                    yield self.url_raw % getattr(result, self.results_property)
+
+        else:
+            yield self.url_raw
+
+    @property
+    def has_dynamic_url(self):
+        return "%s" in self.url_raw
 
 
 class Task(ndb.Model):
@@ -112,6 +140,7 @@ class Task(ndb.Model):
         urls = self.get_urls()
 
         for url in urls:
+            if url in visited_urls: continue
             visited_urls.add(url)
 
             ## Log status ##
