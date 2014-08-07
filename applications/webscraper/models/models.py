@@ -134,13 +134,18 @@ class Task(ndb.Model):
     def unschedule(self):
         pass
 
-    def schedule(self, store=True, test=False):
-        visited_urls = zipset()
+    def schedule(self, store=True, test=False, remove_duplicate_urls=False):
+
         urls = self.get_urls()
 
+        if remove_duplicate_urls:
+            visited_urls = zipset()
+            visited_urls.update(self.get_urls(self.get_results()))
+
         for url in urls:
-            if url in visited_urls: continue
-            visited_urls.add(url)
+            if remove_duplicate_urls:
+                if url in visited_urls: continue
+                visited_urls.add(url)
 
             ## Log status ##
             self.status = "Progress: %s" % len(visited_urls)
