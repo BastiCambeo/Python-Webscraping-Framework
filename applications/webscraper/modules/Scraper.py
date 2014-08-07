@@ -70,8 +70,16 @@ class Scraper(object):
             """ Merge the items of lists at same positions. If one list is shorter, its last element is repeated """
             return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
 
+        def exe(context, nodes, path):
+            try:
+                print [textify(node.xpath(path).pop()) for node in nodes]
+                return [textify(node.xpath(path).pop()) for node in nodes]
+            except Exception as e:
+                return ["None"]
+
         ns = etree.FunctionNamespace(None)
         ns['merge_lists'] = merge_lists
+        ns['exe'] = exe
 
         if not selectors:
             return html_src  # nothing to do

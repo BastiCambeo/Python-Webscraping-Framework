@@ -181,13 +181,34 @@ class Task(ndb.Model):
                 ],
             ),
             Task(
-                name="Leichtathletik_Athleten_Historie",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", results_key=ndb.Key(Task, "Leichtathletik_Sprint_100m_Herren"), results_property="athlete_id")],
+                name="Leichtathletik_Disziplinen",
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes", results_key=ndb.Key(Task, "Leichtathletik_Disziplinen"))],
                 selectors=[
-                    Selector(name="athlete_id", xpath="""//meta[@property = "og:url"]/@content""", type=int, is_key=True),
-                    Selector(name="name", xpath="""//div[@class = "name-container athProfile"]/h1/text()""", type=unicode),
-                    Selector(name="birthday", xpath="""//div[@class = "country-date-container"]//span[4]//text()""", type=datetime),
-                    Selector(name="country", xpath="""//div[@class = "country-date-container"]//span[2]//text()""", type=unicode),
+                    Selector(name="disciplin", xpath="""//select[@id="selectDiscipline"]/option/@value""", type=str),
+                ],
+            ),
+            Task(
+                name="Leichtathletik_Athleten",
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/search?name=&country=&discipline=%s&gender=", results_key=ndb.Key(Task, "Leichtathletik_Disziplinen"), results_property="disciplin")],
+                selectors=[
+                    Selector(name="athlete_id", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//@href""", type=int, is_key=True),
+                    Selector(name="first_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//text()[3]""", type=unicode),
+                    Selector(name="last_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//text()[2]""", type=unicode),
+                    Selector(name="sex", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[2]/text()""", type=unicode),
+                    Selector(name="country", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[4]/text()""", type=unicode),
+                    Selector(name="birthday", xpath="""//div[@class = "country-date-container"]//span[2]//text()""", type=datetime),
+                ],
+            ),
+            Task(
+                name="Leichtathletik_Performance",
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", results_key=ndb.Key(Task, "Leichtathletik_Athleten"), results_property="athlete_id")],
+                selectors=[
+                    Selector(name="athlete_id", xpath="""//meta[@name="url"]/@content""", type=int),
+                    Selector(name="performance", xpath="""//div[@id="panel-progression"]//tr[count(td)>3]//td[2]""", type=float),
+                    Selector(name="datetime", xpath="""merge_lists(//div[@id="panel-progression"]//tr[count(td)>3]/td[last()], //div[@id="panel-progression"]//tr[count(td)>3]/td[1])""", type=datetime),
+                    Selector(name="place", xpath="""//div[@id="panel-progression"]//tr[count(td)>3]//td[last()-1]""", type=unicode),
+                    Selector(name="discipline", xpath="""exe(//div[@id="panel-progression"]//tr[count(td)>3]//td[2], "../preceding::tr/td[@class='sub-title']")""", type=unicode),
+                    Selector(name="performance_key", xpath="""merge_lists(//div[@id="panel-progression"]//tr[count(td)>3]/td[last()], //div[@id="panel-progression"]//tr[count(td)>3]/td[1], //meta[@name="url"]/@content)""", type=unicode, is_key=True),
                 ],
             ),
 
