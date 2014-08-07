@@ -116,6 +116,7 @@ class Scraper(object):
         for y in range(len(selectors_results[selectors.index(key_selector)])):  # Take as many results, as there are results for the key selector
             row = Storage()
             for x, selector in enumerate(selectors):
+                if not selectors_results[x]: selectors_results[x] = [None]  # Guarantee that an element is there
                 row[selector.name] = selectors_results[x][min(y, len(selectors_results[x])-1)]
             result += [row]
         return result
