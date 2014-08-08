@@ -108,7 +108,7 @@ class Task(ndb.Model):
     def delete_results(self):
         Result.delete(self.results_key)
 
-    def get_results(self, as_table=False, limit=1000):
+    def get_results(self, as_table=False, limit=100):
         results = Result.fetch(self.results_key, limit=limit)
 
         if not as_table:
