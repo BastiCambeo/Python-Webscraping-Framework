@@ -70,4 +70,5 @@ else:
 
 response.menu += [
     (T('Administration'), False, URL('admin', 'default', 'site')),
+    (T('Appstats'), False, URL('_ah', 'stats')),
 ]
