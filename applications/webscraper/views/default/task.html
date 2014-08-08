@@ -10,7 +10,6 @@
 
         <div id="url_selectors">
             {{for url_selector in task.url_selectors:}}
-                {{print repr(task.url_selectors)}}
                 <div class="url_selector">
                     <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
                     <span class="advanced">
@@ -74,10 +73,10 @@
 
 <!-- Options -->
 <button class="btn" onclick="save()">Save</button>
-<button class="btn" onclick="test('{{=task.name}}')">Test</button>
-<button class="btn" onclick="schedule('{{=task.name}}')">Run</button>
-<button class="btn advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
-<button class="btn advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
+<button class="btn btn-success" onclick="test('{{=task.name}}')">Test</button>
+<button class="btn btn-success" onclick="schedule('{{=task.name}}')">Run</button>
+<button class="btn btn-danger advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
+<button class="btn btn-danger advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
 <button class="btn" onclick='window.location ="{{=URL('ajax', 'export_excel.xls', vars={'name': task.name})}}"'>Export to Excel</button>
 <button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
 
@@ -86,5 +85,4 @@
 <script>
     swap_advanced();swap_advanced();  // set current view
     update_results_properties();  // Initialize the property list
-    query_task_status('{{=task.name}}');  // Show the tasks status while it is running
 </script>
