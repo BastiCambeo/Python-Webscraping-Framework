@@ -5,7 +5,7 @@ from gluon.storage import Storage  # Support for dictionary container Storage
 from Scraper import Scraper, Selector  # Own Web-Scraper
 from util import *  # for generic helpers
 from google.appengine.api import taskqueue, memcache  # Support for scheduled, cronjob-like tasks and memcache
-from google.appengine.ext import ndb  # Database support
+from google.appengine.ext import ndb, deferred  # Database support
 patch_ndb()
 
 
@@ -110,7 +110,6 @@ class Task(ndb.Model):
         return ndb.Key(Task, self.name, Result, None or result_id)
 
     def delete(self):
-        self.unschedule()
         self.delete_results()
         self.key.delete()
 
@@ -131,9 +130,6 @@ class Task(ndb.Model):
 
             return data
 
-    def unschedule(self):
-        pass
-
     def schedule(self, store=True, test=False, remove_duplicate_urls=False):
 
         urls = self.get_urls()
@@ -151,10 +147,7 @@ class Task(ndb.Model):
             self.status = "Progress: %s" % i
 
             ## Fetch Result ##
-            try:
-                partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
-            except Exception as e:
-                logging.error("Failed to process '%s'" % url)
+            partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
 
             ## Only query one url in testing mode ##
             if test:
@@ -171,6 +164,9 @@ class Task(ndb.Model):
         self.status = None
 
         return partial_results
+
+    def run(self, url, store=True, test=False):
+        pass
 
     @staticmethod
     def example_tasks():
@@ -191,7 +187,7 @@ class Task(ndb.Model):
                 name="Leichtathletik_Disziplinen",
                 url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes", results_key=ndb.Key(Task, "Leichtathletik_Disziplinen"))],
                 selectors=[
-                    Selector(name="disciplin", xpath="""//select[@id="selectDiscipline"]/option/@value""", type=str),
+                    Selector(name="disciplin", xpath="""//select[@id="selectDiscipline"]/option/@value""", type=str, is_key=True),
                 ],
             ),
             Task(

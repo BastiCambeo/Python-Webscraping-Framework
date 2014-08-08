@@ -74,3 +74,5 @@ def save_task():
 
 def get_task_selector_names():
     return json.dumps([selector.name for selector in Task.get(request.vars.name).selectors])
+
+session.forget()

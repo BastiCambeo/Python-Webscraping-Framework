@@ -39,8 +39,8 @@ mail.settings.login = 'basti@katseb.de:password'
 ## configure auth policy ##
 auth.settings.expiration = auth.settings.long_expiration
 auth.settings.registration_requires_verification = False
-auth.settings.registration_requires_approval = False
-auth.settings.reset_password_requires_verification = False
+auth.settings.registration_requires_approval = True
+auth.settings.reset_password_requires_verification = True
 
 #########################################################################
 ## Customize your APP title, subtitle and menus here
@@ -61,9 +61,13 @@ response.google_analytics_id = None
 #########################################################################
 ## this is the main application menu add/remove items as required
 #########################################################################
+import os
 
-response.menu = [
-    (T('Database'), False, '//localhost:8000/datastore'),
+if os.environ['SERVER_SOFTWARE'].find('Development') >= 0:  # is local?
+    response.menu += [(T('Database'), False, '//localhost:8000/datastore')]
+else:
+    response.menu += [(T('Database'), False, 'https://appengine.google.com/datastore/explorer?&app_id=s~idpscraper')]
 
+response.menu += [
     (T('Administration'), False, URL('admin', 'default', 'site')),
 ]
