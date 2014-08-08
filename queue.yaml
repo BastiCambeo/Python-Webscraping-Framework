@@ -10,3 +10,6 @@ queue:
 - name: task
   rate: 3/s
   bucket_size: 100
+  retry_parameters:
+    min_backoff_seconds: 60
+    max_backoff_seconds: 36000
