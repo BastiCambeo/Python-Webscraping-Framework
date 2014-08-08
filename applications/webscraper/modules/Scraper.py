@@ -105,12 +105,14 @@ class Scraper(object):
                             selector_results += [regex_result.groups()[-1]]
                         else:
                             selector_results += [regex_result.group()]
+                    else:
+                        selector_results += [None]
             else:
                 selector_results = nodes
 
             ## auto cast result type ##
             if hasattr(selector, "output_cast"):
-                selector_results = [selector.output_cast(data) for data in selector_results]
+                selector_results = [selector.output_cast(data) if data is not None else None for data in selector_results]  # only cast if data is not None. Keep None data, or the columns intermingle
             selectors_results += [selector_results]
 
         ## convert selector results from a tuple of lists to a list of tuples ##

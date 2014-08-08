@@ -5,7 +5,7 @@ from gluon.storage import Storage  # Support for dictionary container Storage
 from Scraper import Scraper, Selector  # Own Web-Scraper
 from util import *  # for generic helpers
 from google.appengine.api import taskqueue, memcache  # Support for scheduled, cronjob-like tasks and memcache
-from google.appengine.ext import ndb, deferred  # Database support
+from google.appengine.ext import ndb  # Database support
 patch_ndb()
 
 
@@ -24,6 +24,10 @@ class Result(ndb.Expando):
     def delete(results_key):
         ndb.delete_multi(Result.query(Result.results_key == results_key).fetch(keys_only=True))
 
+    def _put_async(self, **ctx_options):
+        if self.key and self.key.id():
+            ## Only save results with (unique) keys. Any action must be idempotent ##
+            super(Result, self)._put_async(**ctx_options)
 
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
@@ -68,18 +72,6 @@ class Task(ndb.Model):
     @property
     def name(self):
         return str(self.key.id())
-
-    @property
-    def status(self):
-        return memcache.get("status_" + self.name) or ""
-
-    @status.setter
-    def status(self, value):
-        if value:
-            memcache.set("status_" + self.name, value)
-            logging.warning(value)
-        else:
-            memcache.delete("status_" + self.name)
 
     @property
     def key_selectors(self):
@@ -130,43 +122,35 @@ class Task(ndb.Model):
 
             return data
 
-    def schedule(self, store=True, test=False, remove_duplicate_urls=False):
+    def run(self, url, store=True):
+        ## Fetch Result ##
+        partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
 
-        urls = self.get_urls()
+        ## Schedule new urls on recursive call ##
+        if self.is_recursive:
+            self.schedule(urls=self.get_urls(partial_results))
 
-        if remove_duplicate_urls:
-            visited_urls = zipset()
-            visited_urls.update(self.get_urls(self.get_results()))
-
-        for i, url in enumerate(urls):
-            if remove_duplicate_urls:
-                if url in visited_urls: continue
-                visited_urls.add(url)
-
-            ## Log status ##
-            self.status = "Progress: %s" % i
-
-            ## Fetch Result ##
-            partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
-
-            ## Only query one url in testing mode ##
-            if test:
-                break
-
-            ## Append new urls on recursive call ##
-            if self.is_recursive:
-                urls = itertools.chain(urls, self.get_urls(partial_results))
-
-            ## Store result in database ##
-            if store:
-                ndb.put_multi(partial_results)
-
-        self.status = None
+        ## Store result in database ##
+        if store:
+            ndb.put_multi(partial_results)
 
         return partial_results
 
-    def run(self, url, store=True, test=False):
-        pass
+    def schedule(self, urls=None, test=False):
+        urls = self.get_urls() if urls is None else urls
+        visited_urls = zipset()
+
+        for url in urls:
+            if self.is_recursive:  # Recursive tasks require a check for duplicate urls
+                if url in visited_urls:
+                    continue
+                visited_urls.add(url)
+
+            if test:
+                ## Only query one url in testing mode ##
+                return self.run(url, store=False)
+            else:
+                taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), queue_name="task")
 
     @staticmethod
     def example_tasks():
@@ -195,11 +179,11 @@ class Task(ndb.Model):
                 url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/search?name=&country=&discipline=%s&gender=", results_key=ndb.Key(Task, "Leichtathletik_Disziplinen"), results_property="disciplin")],
                 selectors=[
                     Selector(name="athlete_id", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//@href""", type=int, is_key=True),
-                    Selector(name="first_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//text()[3]""", type=unicode),
-                    Selector(name="last_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//text()[2]""", type=unicode),
+                    Selector(name="first_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//a/text()""", type=unicode),
+                    Selector(name="last_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]/a/span/text()""", type=unicode),
                     Selector(name="sex", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[2]/text()""", type=unicode),
-                    Selector(name="country", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[4]/text()""", type=unicode),
-                    Selector(name="birthday", xpath="""//div[@class = "country-date-container"]//span[2]//text()""", type=datetime),
+                    Selector(name="country", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[3]/text()""", type=unicode),
+                    Selector(name="birthday", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[4]/text()""", type=datetime),
                 ],
             ),
             Task(

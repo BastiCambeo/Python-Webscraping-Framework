@@ -79,7 +79,7 @@ routes_out = (
 #                  off, print (print uses print statement rather than logging)
 # GAE users may want to use 'off' to suppress routine logging.
 #
-logging = 'debug'
+logging = 'off'
 
 # Error-handling redirects all HTTP errors (status codes >= 400) to a specified
 # path.  If you wish to use error-handling redirects, uncomment the tuple
