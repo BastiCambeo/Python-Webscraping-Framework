@@ -16,25 +16,6 @@ function save(reload) {
     });
 }
 
-function query_task_status(name) {
-    var intervall_handler = window.setInterval(function(){
-        $.ajax({
-            url:"/webscraper/ajax/get_task_status",
-            type: "GET",
-            dataType: "json",
-            data:{name: name},
-            success: function(data) {
-                if (data.status != "") {
-                    $.web2py.flash(data.status);
-                } else {
-                    window.clearInterval(intervall_handler);
-                    $.web2py.hide_flash();
-                }
-            }
-        });
-    }, 5000);
-}
-
 function schedule(name) {
     save(false);
     $.ajax({
@@ -45,7 +26,6 @@ function schedule(name) {
             window.location.reload();
         }
     });
-    setTimeout(function() { query_task_status(name);}, 5000);
 }
 
 function test(name) {

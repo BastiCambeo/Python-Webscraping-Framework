@@ -56,7 +56,6 @@ builtins:
 - remote_api: on
 - appstats: on
 - admin_redirect: on
-- deferred: on
 
 libraries:
 - name: lxml

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+__author__ = 'Sebastian Hofstetter'
 
 @auth.requires_login()
 def index():

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ## if SSL/HTTPS ##
-if not request.is_local:
+if not request.is_local and request.controller != "taskqueue":
     request.requires_https()
 
 ## Connect to DB ##
@@ -61,14 +61,20 @@ response.google_analytics_id = None
 #########################################################################
 ## this is the main application menu add/remove items as required
 #########################################################################
-import os
-
-if os.environ['SERVER_SOFTWARE'].find('Development') >= 0:  # is local?
-    response.menu += [(T('Database'), False, '//localhost:8000/datastore')]
-else:
-    response.menu += [(T('Database'), False, 'https://appengine.google.com/datastore/explorer?&app_id=s~idpscraper')]
-
-response.menu += [
+response.menu = [
     (T('Administration'), False, URL('admin', 'default', 'site')),
     (T('Appstats'), False, URL('_ah', 'stats')),
 ]
+
+
+import os
+from google.appengine.api import taskqueue
+statistics = taskqueue.Queue(name="task").fetch_statistics()
+tasks_status = "%s remaining Tasks  %s Tasks finished last minute" % (statistics.tasks, statistics.executed_last_minute)
+
+if os.environ['SERVER_SOFTWARE'].find('Development') >= 0:  # is local?
+    response.menu += [(T('Database'), False, '//localhost:8000/datastore')]
+    response.menu += [(tasks_status, False, '//localhost:8000/taskqueue')]
+else:
+    response.menu += [(T('Database'), False, 'https://appengine.google.com/datastore/explorer?&app_id=s~idpscraper')]
+    response.menu += [(tasks_status, False, 'https://appengine.google.com/queues?&app_id=s~idpscraper')]
