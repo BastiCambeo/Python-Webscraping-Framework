@@ -24,10 +24,6 @@ class Result(ndb.Expando):
     def delete(results_key):
         ndb.delete_multi(Result.query(Result.results_key == results_key).fetch(keys_only=True))
 
-    def _put_async(self, **ctx_options):
-        if self.key and self.key.id():
-            ## Only save results with (unique) keys. Any action must be idempotent ##
-            super(Result, self)._put_async(**ctx_options)
 
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
@@ -99,7 +95,8 @@ class Task(ndb.Model):
 
     def get_result_key(self, result_value_dict):
         result_id = u"".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors])
-        return ndb.Key(Task, self.name, Result, None or result_id)
+        if result_id:
+            return ndb.Key(Task, self.name, Result, result_id)
 
     def delete(self):
         self.delete_results()
@@ -119,12 +116,11 @@ class Task(ndb.Model):
 
             for result in results:
                 data += [tuple(getattr(result, selector.name) for selector in self.selectors)]
-
             return data
 
     def run(self, url, store=True):
         ## Fetch Result ##
-        partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors)]
+        partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
 
         ## Schedule new urls on recursive call ##
         if self.is_recursive:

@@ -45,13 +45,13 @@ class Selector(ndb.Model):
     @property
     def output_cast(self):
         if issubclass(self.type, unicode):
-            return unicode
+            return lambda s: unicode(s) if s is not None else None
         elif issubclass(self.type, int):
             return lambda s: int(str2float(s))
         elif issubclass(self.type, float):
             return str2float
         elif issubclass(self.type, datetime):
-            return lambda data: datetime(*(feedparser._parse_date(data)[:6]))
+            return str2datetime
         elif issubclass(self.type, str):
             return lambda data: data
 
@@ -71,13 +71,13 @@ class Scraper(object):
             try:
                 return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
             except Exception as e:
-                return ["None"]
+                return [""]
 
         def exe(context, nodes, path):
             try:
                 return [textify(node.xpath(path).pop()) for node in nodes]
             except Exception as e:
-                return ["None"]
+                return [""]
 
         ns = etree.FunctionNamespace(None)
         ns['merge_lists'] = merge_lists
@@ -112,7 +112,8 @@ class Scraper(object):
 
             ## auto cast result type ##
             if hasattr(selector, "output_cast"):
-                selector_results = [selector.output_cast(data) if data is not None else None for data in selector_results]  # only cast if data is not None. Keep None data, or the columns intermingle
+                selector_results = [selector.output_cast(data) for data in selector_results]
+
             selectors_results += [selector_results]
 
         ## convert selector results from a tuple of lists to a list of tuples ##

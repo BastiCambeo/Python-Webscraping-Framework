@@ -1,5 +1,5 @@
 __author__ = 'Sebastian Hofstetter'
-
+import logging
 
 def s(unicode_var):
     """ Converts unicode to utf-8 encoded string """
@@ -52,6 +52,14 @@ def str2float(string):
         string = string.replace(second, ".")  # Convert decimal separator to English format
 
         return float(string)
+
+def str2datetime(string):
+    import feedparser
+    import datetime
+    try:
+        return datetime(*(feedparser._parse_date(string)[:6]))
+    except Exception as e:
+        logging.error("Failed to convert %s into datetime" % string)
 
 
 class omnimethod(object):
