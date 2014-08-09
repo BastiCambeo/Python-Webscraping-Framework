@@ -32,6 +32,9 @@ def str2float(string):
     1845.2
 
     """
+    if not string:
+        return None
+
     if ":" in string:
         ## Time ##
         string = string.replace(",", ".")  # convert to english separators
@@ -53,13 +56,18 @@ def str2float(string):
 
         return float(string)
 
+def str2int(string):
+    f = str2float(string)
+    return int(f) if f is not None else f
+
 def str2datetime(string):
     import feedparser
-    import datetime
+    from datetime import datetime
     try:
-        return datetime(*(feedparser._parse_date(string)[:6]))
+        if string is not None:
+            return datetime(*(feedparser._parse_date(string)[:6]))
     except Exception as e:
-        logging.error("Failed to convert %s into datetime" % string)
+        logging.debug("Failed to convert %s into datetime" % string)
 
 
 class omnimethod(object):
@@ -146,6 +154,7 @@ def patch_ndb():
         future.add_immediate_callback(fetch_callback, future)
         return future
     attr_replace(ndb.Key, "get_async", key_get_async)
+
 
 class zipset(set):
     """ This set does compress its content such that it comes very close to a bloomfilter without false positives """

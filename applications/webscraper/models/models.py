@@ -1,4 +1,5 @@
 from datetime import datetime  # date / time support
+import time  # performance clocking support
 import logging  # support for logging to console (debuggin)
 import itertools  # helpers for iterable objects
 from gluon.storage import Storage  # Support for dictionary container Storage
@@ -11,19 +12,16 @@ patch_ndb()
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
-    results_key = ndb.KeyProperty(kind="Task", required=True)
-
     def __init__(self, *args, **kwds):
         super(Result, self).__init__(*args, **kwds)
 
     @staticmethod
-    def fetch(results_key, limit=None):
-        return Result.query(Result.results_key == results_key).fetch(limit=limit)
+    def fetch(results_key, limit=None, keys_only=False):
+        return Result.query(ancestor=results_key).fetch(limit=limit, keys_only=keys_only)
 
     @staticmethod
     def delete(results_key):
-        ndb.delete_multi(Result.query(Result.results_key == results_key).fetch(keys_only=True))
-
+        ndb.delete_multi(Result.fetch(results_key, keys_only=True))
 
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
@@ -94,9 +92,9 @@ class Task(ndb.Model):
         return ndb.Key(Task, name).get()
 
     def get_result_key(self, result_value_dict):
-        result_id = u"".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors])
+        result_id = u"".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors])  # Assemble Result_key from key selectors
         if result_id:
-            return ndb.Key(Task, self.name, Result, result_id)
+            return ndb.Key(Result, result_id, parent=self.results_key)
 
     def delete(self):
         self.delete_results()
@@ -112,15 +110,22 @@ class Task(ndb.Model):
             return results
         else:
             ## Create data table ##
-            data = [tuple(selector.name for selector in self.selectors)]  # titles
+            data = [[self.key_selectors[0].name] + [selector.name for selector in self.selectors if not selector.is_key]]  # titles
 
             for result in results:
-                data += [tuple(getattr(result, selector.name) for selector in self.selectors)]
+                data += [[result.key.id()] + [getattr(result, selector.name) for selector in self.selectors if not selector.is_key]]
             return data
 
     def run(self, url, store=True):
         ## Fetch Result ##
-        partial_results = [Result(key=self.get_result_key(value_dict), results_key=self.results_key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
+        t_ = time.clock()
+        partial_results = []
+        for value_dict in Scraper.http_request(url, selectors=self.selectors):
+            result_key = self.get_result_key(value_dict)
+            if result_key:  # Do not consider results, without key attribute
+                value_dict = {selector.name: value_dict[selector.name] for selector in self.selectors if not selector.is_key}
+                partial_results.append(Result(key=result_key, **value_dict))
+        print 'Time to evaluate', time.clock() - t_
 
         ## Schedule new urls on recursive call ##
         if self.is_recursive:
@@ -128,8 +133,12 @@ class Task(ndb.Model):
 
         ## Store result in database ##
         if store:
+            t_ = time.clock()
             ndb.put_multi(partial_results)
+            print 'Time to store', time.clock() - t_
+            print 'Time to store per entity', (time.clock() - t_) * 1.0 / max(len(partial_results), 1)
 
+        logging.info("Put %s entities" % len(partial_results))
         return partial_results
 
     def schedule(self, urls=None, test=False):

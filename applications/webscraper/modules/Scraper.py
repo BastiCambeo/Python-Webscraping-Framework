@@ -5,7 +5,6 @@ from lxml import html  # xpath support
 import re  # regex support
 from requests import Session  # for login required http requests
 from gluon.storage import Storage  # For easy dict access
-import feedparser  # autodetection of date formats
 from datetime import datetime  # date / time support
 from util import *  # for generic helpers
 from google.appengine.ext import ndb  # Database support
@@ -47,7 +46,7 @@ class Selector(ndb.Model):
         if issubclass(self.type, unicode):
             return lambda s: unicode(s) if s is not None else None
         elif issubclass(self.type, int):
-            return lambda s: int(str2float(s))
+            return str2int
         elif issubclass(self.type, float):
             return str2float
         elif issubclass(self.type, datetime):

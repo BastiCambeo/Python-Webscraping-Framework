@@ -75,4 +75,13 @@ def save_task():
 def get_task_selector_names():
     return json.dumps([selector.name for selector in Task.get(request.vars.name).selectors])
 
+def result_count():
+    i = 0
+    for key in Result.query().fetch(keys_only=True):
+        i += 1
+    return i
+
+def put_tasks():
+    ndb.put_multi(Task.example_tasks())
+
 session.forget()
