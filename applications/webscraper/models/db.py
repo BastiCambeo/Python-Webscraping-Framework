@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
 
 ## if SSL/HTTPS ##
-if not request.is_local and request.controller != "taskqueue":
-    request.requires_https()
+#if not request.is_local and request.controller != "taskqueue":
+    #request.requires_https()
 
-## Connect to DB ##
-if not request.env.web2py_runtime_gae:
-    ## if NOT running on Google App Engine use SQLite or other DB
-    db = DAL('sqlite://storage.sqlite',pool_size=1,check_reserved=['all'])
-else:
-    ## connect to Google BigTable (optional 'google:datastore://namespace')
-    db = DAL('google:datastore')
-    ## store sessions and tickets there
-    from datetime import datetime, timedelta
-    session.connect(request, response, db=db, cookie_expires=datetime.now() + timedelta(days=30))
+
+## connect to Google BigTable (optional 'google:datastore://namespace')
+db = DAL('google:datastore')
+## store sessions and tickets there
+from datetime import datetime, timedelta
+session.connect(request, response, db=db, cookie_expires=datetime.now() + timedelta(days=30))
 
 
 #########################################################################
@@ -39,8 +35,8 @@ mail.settings.login = 'basti@katseb.de:password'
 ## configure auth policy ##
 auth.settings.expiration = auth.settings.long_expiration
 auth.settings.registration_requires_verification = False
-auth.settings.registration_requires_approval = True
-auth.settings.reset_password_requires_verification = True
+auth.settings.registration_requires_approval = False
+auth.settings.reset_password_requires_verification = False
 
 #########################################################################
 ## Customize your APP title, subtitle and menus here

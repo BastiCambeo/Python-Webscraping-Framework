@@ -21,9 +21,9 @@ class Selector(ndb.Model):
         datetime: "date or time"
     }
 
-    is_key = ndb.BooleanProperty(required=True, default=False)
-    name = ndb.StringProperty(required=True, default="")
-    xpath = ndb.StringProperty(required=True, default="")
+    is_key = ndb.BooleanProperty(default=False)
+    name = ndb.StringProperty(default="")
+    xpath = ndb.StringProperty(default="")
     def type_setter(prop, self, value):
         if issubclass(value, unicode):
             self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
@@ -34,12 +34,12 @@ class Selector(ndb.Model):
         elif issubclass(value, datetime):
             self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
         return value
-    type = ndb.PickleProperty(required=True, default=str, setters=[type_setter])
+    type = ndb.PickleProperty(default=str, setters=[type_setter])
     def regex_setter(prop, self, value):
         if not value:
             return self.regex  # Do not overwrite the regex that is forced by the type
         return value
-    regex = ndb.StringProperty(required=True, default="", setters=[regex_setter])
+    regex = ndb.StringProperty(default="", setters=[regex_setter])
 
     @property
     def output_cast(self):

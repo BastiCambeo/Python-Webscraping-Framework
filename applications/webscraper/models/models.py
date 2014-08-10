@@ -26,10 +26,10 @@ class Result(ndb.Expando):
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
 
-    url_raw = ndb.StringProperty(required=True, default="")
+    url_raw = ndb.StringProperty(default="")
     results_key = ndb.KeyProperty(kind="Task", required=True)
-    results_property = ndb.StringProperty(required=True, default="")
-    start_parameter = ndb.StringProperty(required=True, default="")
+    results_property = ndb.StringProperty(default="")
+    start_parameter = ndb.StringProperty(default="")
 
     def get_urls(self, results=None):
         """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
@@ -56,7 +56,7 @@ class Task(ndb.Model):
 
     # self.key.id() := name of the tasks
     results_key = ndb.KeyProperty(kind="Task", required=True)  # name for the result. Defaults to task_name but can also refer to other task_names for appending to external results
-    period = ndb.IntegerProperty(required=True, default=0)  # seconds between scheduled runs [if set]
+    period = ndb.IntegerProperty(default=0)  # seconds between scheduled runs [if set]
     creation_datetime = ndb.DateTimeProperty(required=True, auto_now_add=True)
     url_selectors = ndb.StructuredProperty(UrlSelector, repeated=True)  # Urls that should be crawled in this task. Can be fetched from the result of other tasks
     selectors = ndb.StructuredProperty(Selector, repeated=True)  # Selector of webpage content
@@ -110,10 +110,10 @@ class Task(ndb.Model):
             return results
         else:
             ## Create data table ##
-            data = [[self.key_selectors[0].name] + [selector.name for selector in self.selectors if not selector.is_key]]  # titles
+            data = [[selector.name for selector in self.selectors]]  # titles
 
             for result in results:
-                data += [[result.key.id()] + [getattr(result, selector.name) for selector in self.selectors if not selector.is_key]]
+                data += [[getattr(result, selector.name) for selector in self.selectors]]
             return data
 
     def run(self, url, store=True):
@@ -123,7 +123,7 @@ class Task(ndb.Model):
         for value_dict in Scraper.http_request(url, selectors=self.selectors):
             result_key = self.get_result_key(value_dict)
             if result_key:  # Do not consider results, without key attribute
-                value_dict = {selector.name: value_dict[selector.name] for selector in self.selectors if not selector.is_key}
+                value_dict = {selector.name: value_dict[selector.name] for selector in self.selectors}
                 partial_results.append(Result(key=result_key, **value_dict))
         print 'Time to evaluate', time.clock() - t_
 
