@@ -191,7 +191,7 @@ class Scraper(object):
     @staticmethod
     def http_request(url, selectors=None, session=None):
         """ Returns the response of an http get-request to a given url """
-        logging.warning(url)  # For Debugging purposes
+        logging.info(url)  # For Debugging purposes
         session = session or Session()
         html_src = session.get(url).text
         return Scraper.parse(html_src, selectors=selectors)
