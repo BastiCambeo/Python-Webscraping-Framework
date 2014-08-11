@@ -12,7 +12,7 @@ def schedule():
 
 def test_task():
     try:
-        results = Task.get(request.vars.name).schedule(test=True)[:15]
+        results = Task.get(request.vars.name).test_run()[:15]
         return json.dumps(
             {"results": "<br>".join([repr(result._to_dict(exclude=["results_key"])) for result in results])    })
     except Exception as e:

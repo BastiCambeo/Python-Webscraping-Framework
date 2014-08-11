@@ -31,14 +31,14 @@ class UrlSelector(ndb.Model):
     results_property = ndb.StringProperty(default="")
     start_parameter = ndb.StringProperty(default="")
 
-    def get_urls(self, results=None):
+    def get_urls(self, results=None, limit=None):
         """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
         if self.has_dynamic_url:
 
             if self.start_parameter:
                 yield self.url_raw % self.start_parameter
 
-            results = Result.fetch(self.results_key) if results is None else results
+            results = Result.fetch(self.results_key, limit=limit) if results is None else results
             for result in results:
                 if getattr(result, self.results_property) is not None:
                     yield self.url_raw % getattr(result, self.results_property)
@@ -84,8 +84,8 @@ class Task(ndb.Model):
             kwds.setdefault("url_selectors", [UrlSelector(results_key=self.key)])
         super(Task, self).__init__(*args, **kwds)
 
-    def get_urls(self, results=None):
-        return itertools.chain(*[url_selector.get_urls(results) for url_selector in self.url_selectors])  # Keep generators intact!
+    def get_urls(self, results=None, limit=None):
+        return itertools.chain(*[url_selector.get_urls(results, limit=limit) for url_selector in self.url_selectors])  # Keep generators intact!
 
     @staticmethod
     def get(name):
@@ -141,7 +141,7 @@ class Task(ndb.Model):
         logging.info("Put %s entities" % len(partial_results))
         return partial_results
 
-    def schedule(self, urls=None, test=False):
+    def schedule(self, urls=None):
         urls = self.get_urls() if urls is None else urls
         visited_urls = zipset()
 
@@ -151,11 +151,11 @@ class Task(ndb.Model):
                     continue
                 visited_urls.add(url)
 
-            if test:
-                ## Only query one url in testing mode ##
-                return self.run(url, store=False)
             else:
                 taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), queue_name="task")
+
+    def test_run(self):
+        return self.run(next(self.get_urls(limit=1)), store=False)
 
     @staticmethod
     def example_tasks():
