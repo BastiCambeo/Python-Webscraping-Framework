@@ -159,17 +159,16 @@ class Task(ndb.Model):
         return partial_results
 
     def schedule(self, urls=None):
-        urls = self.get_urls() if urls is None else urls
         visited_urls = zipset()
 
-        for url in urls:
+        for url in urls or self.get_urls():
             if self.is_recursive:  # Recursive tasks require a check for duplicate urls
                 if url in visited_urls:
                     continue
                 visited_urls.add(url)
 
             else:
-                taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), queue_name="task")
+                taskqueue.add_async(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), queue_name="task")
 
     def test_run(self):
         return self.run(next(self.get_urls(limit=1)), store=False)
