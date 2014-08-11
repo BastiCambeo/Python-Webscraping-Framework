@@ -136,14 +136,7 @@ class Task(ndb.Model):
 
     def run(self, url, store=True):
         ## Fetch Result ##
-        t_ = time.clock()
-        partial_results = []
-        for value_dict in Scraper.http_request(url, selectors=self.selectors):
-            result_key = self.get_result_key(value_dict)
-            if result_key:  # Do not consider results, without key attribute
-                value_dict = {selector.name: value_dict[selector.name] for selector in self.selectors}
-                partial_results.append(Result(key=result_key, **value_dict))
-        logging.info('Time to evaluate %s' % (time.clock() - t_))
+        partial_results = [Result(key=self.get_result_key(value_dict), **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
 
         ## Schedule new urls on recursive call ##
         if self.is_recursive:
@@ -151,15 +144,15 @@ class Task(ndb.Model):
 
         ## Store result in database ##
         if store:
-            t_ = time.clock()
             ndb.put_multi(partial_results)
-            logging.info('Time to store %s' % (time.clock() - t_))
-            logging.info('Time to store per entity %s' % ((time.clock() - t_) * 1.0 / max(len(partial_results), 1)))
-            logging.info("Put %s entities" % len(partial_results))
         return partial_results
 
-    def schedule(self, urls=None):
-        return [taskqueue.Task(url="/webscraper/taskqueue/run_task",params=dict(task_key=self.key.urlsafe(), url=url)).add(queue_name="task") for url in urls or self.get_urls()]
+    def schedule(self, urls=None, in_taskqueue=False):
+        if in_taskqueue:
+            return [taskqueue.Task(url="/webscraper/taskqueue/run_task",params=dict(task_key=self.key.urlsafe(), url=url)).add(queue_name="task") for url in urls or self.get_urls()]
+        else:
+            for url in urls or self.get_urls():
+                self.run(url)
 
     def test_run(self):
         return self.run(next(self.get_urls(limit=1)), store=False)

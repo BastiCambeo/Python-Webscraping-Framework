@@ -3,7 +3,7 @@
  */
 
 $.ajaxSetup({
-    timeout: 1000000
+    timeout: 24*3600*1000
 });
 
 function save(reload) {
