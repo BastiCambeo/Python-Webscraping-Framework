@@ -43,19 +43,19 @@ class UrlSelector(ndb.Model):
                 yield self.url_raw % self.start_parameter
 
 
-            for url_parameter in self.get_url_parameters(results=results):
+            for url_parameter in self.get_url_parameters(results=results, limit=limit):
                 yield self.url_raw % url_parameter
 
         else:
             yield self.url_raw
 
-    def get_url_parameters(self, results=None):
+    def get_url_parameters(self, results=None, limit=None):
         if self.selector.is_key:
             ## only fetch keys ##
-            for result_key in results or Result.fetch(self.results_key, keys_only=True):
+            for result_key in results or Result.fetch(self.results_key, keys_only=True, limit=limit):
                 yield result_key.id()
         else:
-            for result in results or Result.fetch(self.results_key, projection=[ndb.GenericProperty(self.results_property)]):
+            for result in results or Result.fetch(self.results_key, projection=[ndb.GenericProperty(self.results_property)], limit=limit):
                 if getattr(result, self.results_property) is not None:
                     yield getattr(result, self.results_property)
 
