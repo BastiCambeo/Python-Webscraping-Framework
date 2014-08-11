@@ -50,9 +50,14 @@ class UrlSelector(ndb.Model):
             yield self.url_raw
 
     def get_url_parameters(self, results=None):
-        for result in results or Result.fetch(self.results_key, projection=[ndb.GenericProperty(self.results_property)]):
-            if getattr(result, self.results_property) is not None:
-                yield getattr(result, self.results_property)
+        if self.selector.is_key:
+            ## only fetch keys ##
+            for result_key in results or Result.fetch(self.results_key, keys_only=True):
+                yield result_key.id()
+        else:
+            for result in results or Result.fetch(self.results_key, projection=[ndb.GenericProperty(self.results_property)]):
+                if getattr(result, self.results_property) is not None:
+                    yield getattr(result, self.results_property)
 
     @property
     def has_dynamic_url(self):
