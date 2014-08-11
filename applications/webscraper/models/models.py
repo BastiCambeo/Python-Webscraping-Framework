@@ -128,12 +128,11 @@ class Task(ndb.Model):
         urls = query_options.entities or self.get_urls(query_options)
 
         ## Schedule one task per url ##
-        #Task.QUEUE.add([taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls])
+        Task.QUEUE.add([taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls])
 
-        print len(list(urls))
         ## Schedule next batch where last batch ended ##
         if query_options.end_cursor and query_options.has_next:
-            Task.QUEUE.add(taskqueue.Task(url="/webscraper/ajax/schedule", params=dict(start_cursor=query_options.end_cursor.urlsafe())))
+            Task.QUEUE.add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(start_cursor=query_options.end_cursor.urlsafe())))
 
     def run(self, url, store=True):
         ## Fetch Result ##
