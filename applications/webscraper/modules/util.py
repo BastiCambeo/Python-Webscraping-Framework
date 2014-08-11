@@ -155,6 +155,18 @@ def patch_ndb():
         return future
     attr_replace(ndb.Key, "get_async", key_get_async)
 
+class Query_Options(object):
+    def __init__(self, keys_only=None, projection=None, limit=None, offset=None, start_cursor=None, end_cursor=None, hast_next=None, entities=None):
+        self.keys_only=keys_only
+        self.projection = projection
+        self.limit = limit
+        self.offset = offset
+        self.start_cursor = start_cursor
+
+        ## Will usually be set after query has executed ##
+        self.end_cursor = end_cursor
+        self.has_next = hast_next
+        self.entities = entities
 
 class zipset(set):
     """ This set does compress its content such that it comes very close to a bloomfilter without false positives """
@@ -175,3 +187,4 @@ class zipset(set):
             for item in set2:
                 args[0].add(item)
         return super(zipset, self).__init__(*args, **kwargs)
+

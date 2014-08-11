@@ -9,6 +9,7 @@ from google.appengine.api import taskqueue, memcache  # Support for scheduled, c
 from google.appengine.ext import ndb  # Database support
 patch_ndb()
 
+DEFAULT_LIMIT = 100
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
@@ -16,12 +17,13 @@ class Result(ndb.Expando):
         super(Result, self).__init__(*args, **kwds)
 
     @staticmethod
-    def fetch(results_key, limit=None, keys_only=False, projection=None):
-        return Result.query(ancestor=results_key).fetch(limit=limit, keys_only=keys_only, projection=projection)
+    def fetch(results_key, query_options):
+        query_options.entities, query_options.end_cursor, query_options.has_next = Result.query(ancestor=results_key).fetch_page(query_options.limit or DEFAULT_LIMIT, keys_only=query_options.keys_only, projection=query_options.projection, start_cursor=query_options.start_cursor)
+        return query_options.entities
 
     @staticmethod
     def delete(results_key):
-        ndb.delete_multi(Result.fetch(results_key, keys_only=True))
+        ndb.delete_multi(Result.fetch(results_key, query_options=Query_Options(keys_only=True, limit=DEFAULT_LIMIT*10)))
 
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
@@ -35,7 +37,7 @@ class UrlSelector(ndb.Model):
     def selector(self):
         return self.results_key.get().get_selector(self.results_property)
 
-    def get_urls(self, results=None, limit=None):
+    def get_urls(self, query_options):
         """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
         if self.has_dynamic_url:
 
@@ -43,21 +45,16 @@ class UrlSelector(ndb.Model):
                 yield self.url_raw % self.start_parameter
 
 
-            for url_parameter in self.get_url_parameters(results=results, limit=limit):
+            for url_parameter in self.get_url_parameters(query_options):
                 yield self.url_raw % url_parameter
 
         else:
             yield self.url_raw
 
-    def get_url_parameters(self, results=None, limit=None):
-        if self.selector.is_key:
-            ## only fetch keys ##
-            for result_key in results or Result.fetch(self.results_key, keys_only=True, limit=limit):
-                yield result_key.id()
-        else:
-            for result in results or Result.fetch(self.results_key, projection=[ndb.GenericProperty(self.results_property)], limit=limit):
-                if getattr(result, self.results_property) is not None:
-                    yield getattr(result, self.results_property)
+    def get_url_parameters(self, query_options):
+        for result in query_options.entities or Result.fetch(self.results_key, query_options):
+            if getattr(result, self.results_property) is not None:
+                yield getattr(result, self.results_property)
 
     @property
     def has_dynamic_url(self):
@@ -78,14 +75,16 @@ class Task(ndb.Model):
 
     @property
     def name(self):
-        return str(self.key.id())
+        return unicode(self.key.id())
 
     @property
     def key_selectors(self):
+        """ Returns all key selectors """
         return [selector for selector in self.selectors if selector.is_key]
 
     @property
     def is_recursive(self):
+        """ Returns true if this task adds results on which its own urls are based """
         return any([url_selector.has_dynamic_url and url_selector.results_key == self.results_key for url_selector in self.url_selectors])
 
     def __init__(self, *args, **kwds):
@@ -102,8 +101,8 @@ class Task(ndb.Model):
             if selector.name == name:
                 return selector
 
-    def get_urls(self, results=None, limit=None):
-        return itertools.chain(*[url_selector.get_urls(results, limit=limit) for url_selector in self.url_selectors])  # Keep generators intact!
+    def get_urls(self, query_options):
+        return itertools.chain(*[url_selector.get_urls(query_options) for url_selector in self.url_selectors])  # Keep generators intact!
 
     @staticmethod
     def get(name):
@@ -121,42 +120,33 @@ class Task(ndb.Model):
     def delete_results(self):
         Result.delete(self.results_key)
 
-    def get_results(self, as_table=False, limit=100):
-        results = Result.fetch(self.results_key, limit=limit)
+    def get_results(self, query_options):
+        return Result.fetch(self.results_key, query_options)
 
-        if not as_table:
-            return results
-        else:
-            ## Create data table ##
-            data = [[selector.name for selector in self.selectors]]  # titles
-
-            for result in results:
-                data += [[getattr(result, selector.name) for selector in self.selectors]]
-            return data
+    def schedule(self, query_options):
+        urls = query_options.entities or self.get_urls(query_options)
+        if query_options.end_cursor and query_options.has_next:
+            ## Schedule next batch where last batch ended ##
+            Task.QUEUE.add(taskqueue.Task(url="/ajax/schedule", params=dict(start_cursor=query_options.end_cursor.urlsafe())))
+        ## Schedule one task per url ##
+        Task.QUEUE.add([taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls])
 
     def run(self, url, store=True):
         ## Fetch Result ##
-        partial_results = [Result(key=self.get_result_key(value_dict), **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
+        results = [Result(key=self.get_result_key(value_dict), **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
 
         ## Schedule new urls on recursive call ##
         if self.is_recursive:
-            self.schedule(urls=self.get_urls(partial_results))
+            self.schedule(urls=self.get_urls(Query_Options(entities=results)))
 
         ## Store result in database ##
         if store:
-            ndb.put_multi(partial_results)
-        return partial_results
+            ndb.put_multi(results)
 
-    def schedule(self, urls=None, in_taskqueue=False):
-        if in_taskqueue:
-            return [taskqueue.Task(url="/webscraper/taskqueue/run_task",params=dict(task_key=self.key.urlsafe(), url=url)).add(queue_name="task") for url in urls or self.get_urls()]
-        else:
-            for i, url in enumerate(urls or self.get_urls()):
-                self.run(url)
-                memcache.set("status", i)
+        return results
 
     def test_run(self):
-        return self.run(next(self.get_urls(limit=1)), store=False)
+        return self.run(next(self.get_urls(Query_Options(limit=1))), store=False)
 
     @staticmethod
     def example_tasks():

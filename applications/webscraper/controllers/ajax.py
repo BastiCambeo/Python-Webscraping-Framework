@@ -8,11 +8,12 @@ assert auth.is_logged_in()  # all actions require login
 
 
 def schedule():
-    Task.get(request.vars.name).schedule()
+    start_cursor = ndb.Cursor(urlsafe=request.vars.start_cursor) if request.vars.start_cursor else None
+    Task.get(request.vars.name).schedule(Query_Options(limit=DEFAULT_LIMIT, start_cursor=start_cursor))
 
 def test_task():
     try:
-        results = Task.get(request.vars.name).test_run()[:15]
+        results = Task.get(request.vars.name).test_run()[:DEFAULT_LIMIT]
         return json.dumps(
             {"results": "<br>".join([repr(result._to_dict(exclude=["results_key"])) for result in results])    })
     except Exception as e:
