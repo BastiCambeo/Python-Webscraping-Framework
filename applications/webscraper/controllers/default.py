@@ -7,6 +7,7 @@ __author__ = 'Sebastian Hofstetter'
 response.menu = [
     (T('Administration'), False, URL('admin', 'default', 'site')),
     (T('Appstats'), False, URL('_ah', 'stats')),
+    (T('Console'), False, URL('default', 'console')),
 ]
 import os
 from google.appengine.api import taskqueue
@@ -59,3 +60,7 @@ def task():
     data = task.get_results(as_table=True)
 
     return dict(data=data, task=task)
+
+@auth.requires_login()
+def console():
+    return dict()

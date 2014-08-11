@@ -84,4 +84,11 @@ def result_count():
 def put_tasks():
     ndb.put_multi(Task.example_tasks())
 
+def run_command():
+    try:
+        return json.dumps({"results": repr(eval(request.vars.command))})
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({"results": e.message})
+
 session.forget()

@@ -126,3 +126,15 @@ function remove_content_selector() {
     if ($(".content_selector").length > 1)
         $(".content_selector").last().remove();
 }
+
+function console_eval(command) {
+    $.ajax({
+        type: "POST",
+        url: "/webscraper/ajax/run_command",
+        data: {command: command},
+        dataType: "json",
+        success: function(data) {
+            $.web2py.flash(data.results);
+        }
+    });
+}
