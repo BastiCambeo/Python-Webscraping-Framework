@@ -12,7 +12,7 @@ response.menu = [
 import os
 from google.appengine.api import taskqueue
 statistics = taskqueue.Queue(name="task").fetch_statistics()
-tasks_status = "%s remaining Tasks  %s Tasks finished last minute" % (statistics.tasks, statistics.executed_last_minute or 0)
+tasks_status = "%s remaining Tasks  %s Tasks finished last minute %s Tasks finished" % (statistics.tasks, statistics.executed_last_minute or 0, memcache.get("status") or 0)
 
 if 'SERVER_SOFTWARE' in os.environ and os.environ['SERVER_SOFTWARE'].find('Development') >= 0:  # is local?
     response.menu += [(T('Datastore Viewer'), False, '//localhost:8000/datastore')]

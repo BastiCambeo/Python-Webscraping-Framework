@@ -151,8 +151,9 @@ class Task(ndb.Model):
         if in_taskqueue:
             return [taskqueue.Task(url="/webscraper/taskqueue/run_task",params=dict(task_key=self.key.urlsafe(), url=url)).add(queue_name="task") for url in urls or self.get_urls()]
         else:
-            for url in urls or self.get_urls():
+            for i, url in enumerate(urls or self.get_urls()):
                 self.run(url)
+                memcache.set("status", i)
 
     def test_run(self):
         return self.run(next(self.get_urls(limit=1)), store=False)
