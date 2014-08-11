@@ -160,15 +160,20 @@ class Task(ndb.Model):
 
     def schedule(self, urls=None):
         visited_urls = zipset()
+        tasks = []
 
-        for url in urls or self.get_urls():
+        for i, url in enumerate(urls or self.get_urls()):
             if self.is_recursive:  # Recursive tasks require a check for duplicate urls
                 if url in visited_urls:
                     continue
                 visited_urls.add(url)
 
-            else:
-                taskqueue.add_async(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), queue_name="task")
+            tasks.append(taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)))
+            if not i % 1000:
+                ## add batches of 1000 tasks ##
+                taskqueue.Queue(name="task").add(tasks)
+                tasks = []
+        taskqueue.Queue(name="task").add(tasks)
 
     def test_run(self):
         return self.run(next(self.get_urls(limit=1)), store=False)
