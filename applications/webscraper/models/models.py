@@ -125,7 +125,7 @@ class Task(ndb.Model):
             if result_key:  # Do not consider results, without key attribute
                 value_dict = {selector.name: value_dict[selector.name] for selector in self.selectors}
                 partial_results.append(Result(key=result_key, **value_dict))
-        logging.info('Time to evaluate', time.clock() - t)
+        logging.info('Time to evaluate %s' % (time.clock() - t_))
 
         ## Schedule new urls on recursive call ##
         if self.is_recursive:
@@ -135,8 +135,8 @@ class Task(ndb.Model):
         if store:
             t_ = time.clock()
             ndb.put_multi(partial_results)
-            logging.info('Time to store', time.clock() - t_)
-            logging.info('Time to store per entity', (time.clock() - t_) * 1.0 / max(len(partial_results), 1))
+            logging.info('Time to store %s' % (time.clock() - t_))
+            logging.info('Time to store per entity %s' % ((time.clock() - t_) * 1.0 / max(len(partial_results), 1)))
 
         logging.info("Put %s entities" % len(partial_results))
         return partial_results
