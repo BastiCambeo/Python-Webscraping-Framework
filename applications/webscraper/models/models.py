@@ -159,10 +159,7 @@ class Task(ndb.Model):
         return partial_results
 
     def schedule(self, urls=None):
-        task_results = [taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)).add_async(queue_name="task") for url in urls or self.get_urls()]
-
-        for task_result in task_results:
-            task_result.get_result()
+        return [taskqueue.Task(url="/webscraper/taskqueue/run_task",params=dict(task_key=self.key.urlsafe(), url=url)).add(queue_name="task") for url in urls or self.get_urls()]
 
     def test_run(self):
         return self.run(next(self.get_urls(limit=1)), store=False)
