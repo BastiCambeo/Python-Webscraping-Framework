@@ -18,7 +18,7 @@ class Result(ndb.Expando):
 
     @staticmethod
     def fetch(results_key, query_options):
-        query_options.entities, query_options.end_cursor, query_options.has_next = Result.query(ancestor=results_key).fetch_page(query_options.limit or DEFAULT_LIMIT, keys_only=query_options.keys_only, projection=query_options.projection, start_cursor=query_options.start_cursor)
+        query_options.entities, query_options.end_cursor, query_options.has_next = Result.query(ancestor=results_key).fetch_page(query_options.limit or DEFAULT_LIMIT, keys_only=query_options.keys_only, start_cursor=query_options.start_cursor)
         return query_options.entities
 
     @staticmethod
@@ -125,11 +125,13 @@ class Task(ndb.Model):
 
     def schedule(self, query_options):
         urls = query_options.entities or self.get_urls(query_options)
-        if query_options.end_cursor and query_options.has_next:
-            ## Schedule next batch where last batch ended ##
-            Task.QUEUE.add(taskqueue.Task(url="/ajax/schedule", params=dict(start_cursor=query_options.end_cursor.urlsafe())))
+
         ## Schedule one task per url ##
         Task.QUEUE.add([taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls])
+
+        ## Schedule next batch where last batch ended ##
+        if query_options.end_cursor and query_options.has_next:
+            Task.QUEUE.add(taskqueue.Task(url="/webscraper/ajax/schedule", params=dict(start_cursor=query_options.end_cursor.urlsafe())))
 
     def run(self, url, store=True):
         ## Fetch Result ##
