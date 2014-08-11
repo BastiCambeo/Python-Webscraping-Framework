@@ -16,8 +16,8 @@ class Result(ndb.Expando):
         super(Result, self).__init__(*args, **kwds)
 
     @staticmethod
-    def fetch(results_key, limit=None, keys_only=False):
-        return Result.query(ancestor=results_key).fetch(limit=limit, keys_only=keys_only)
+    def fetch(results_key, limit=None, keys_only=False, projection=None):
+        return Result.query(ancestor=results_key).fetch(limit=limit, keys_only=keys_only, projection=projection)
 
     @staticmethod
     def delete(results_key):
@@ -31,6 +31,10 @@ class UrlSelector(ndb.Model):
     results_property = ndb.StringProperty(default="")
     start_parameter = ndb.StringProperty(default="")
 
+    @property
+    def selector(self):
+        return self.results_key.get().get_selector(self.results_property)
+
     def get_urls(self, results=None, limit=None):
         """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
         if self.has_dynamic_url:
@@ -38,13 +42,17 @@ class UrlSelector(ndb.Model):
             if self.start_parameter:
                 yield self.url_raw % self.start_parameter
 
-            results = Result.fetch(self.results_key, limit=limit) if results is None else results
-            for result in results:
-                if getattr(result, self.results_property) is not None:
-                    yield self.url_raw % getattr(result, self.results_property)
+
+            for url_parameter in self.get_url_parameters(results=results):
+                yield self.url_raw % url_parameter
 
         else:
             yield self.url_raw
+
+    def get_url_parameters(self, results=None):
+        for result in results or Result.fetch(self.results_key, projection=[ndb.GenericProperty(self.results_property)]):
+            if getattr(result, self.results_property) is not None:
+                yield getattr(result, self.results_property)
 
     @property
     def has_dynamic_url(self):
@@ -83,6 +91,11 @@ class Task(ndb.Model):
             kwds.setdefault("selectors", [Selector(is_key=True)])
             kwds.setdefault("url_selectors", [UrlSelector(results_key=self.key)])
         super(Task, self).__init__(*args, **kwds)
+
+    def get_selector(self, name):
+        for selector in self.selectors:
+            if selector.name == name:
+                return selector
 
     def get_urls(self, results=None, limit=None):
         return itertools.chain(*[url_selector.get_urls(results, limit=limit) for url_selector in self.url_selectors])  # Keep generators intact!
