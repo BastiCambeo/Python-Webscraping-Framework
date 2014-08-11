@@ -137,8 +137,7 @@ class Task(ndb.Model):
             ndb.put_multi(partial_results)
             logging.info('Time to store %s' % (time.clock() - t_))
             logging.info('Time to store per entity %s' % ((time.clock() - t_) * 1.0 / max(len(partial_results), 1)))
-
-        logging.info("Put %s entities" % len(partial_results))
+            logging.info("Put %s entities" % len(partial_results))
         return partial_results
 
     def schedule(self, urls=None):

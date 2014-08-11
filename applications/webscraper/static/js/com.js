@@ -2,6 +2,10 @@
  * Created by Basti on 24.05.14.
  */
 
+$.ajaxSetup({
+    timeout: 1000000
+});
+
 function save(reload) {
     reload = typeof reload !== 'undefined' ? reload : true;
     $.ajax({
