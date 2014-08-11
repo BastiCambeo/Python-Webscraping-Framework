@@ -169,8 +169,8 @@ class Task(ndb.Model):
                 visited_urls.add(url)
 
             tasks.append(taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)))
-            if not i % 1000:
-                ## add batches of 1000 tasks ##
+            if not i % 100:
+                ## add batches of 100 tasks ##
                 taskqueue.Queue(name="task").add(tasks)
                 tasks = []
         taskqueue.Queue(name="task").add(tasks)
