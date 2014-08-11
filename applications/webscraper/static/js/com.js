@@ -23,7 +23,7 @@ function save(reload) {
 function schedule(name) {
     save(false);
     $.ajax({
-		url:"/webscraper/ajax/schedule",
+		url:"/webscraper/taskqueue/schedule",
 		data:{name: name},
         type: "POST",
         success: function() {
