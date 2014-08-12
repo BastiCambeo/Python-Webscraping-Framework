@@ -122,7 +122,6 @@ class Task(ndb.Model):
     def get_results(self, query_options):
         return Result.fetch(self.results_key, query_options)
 
-    @ndb.transactional
     def schedule(self, query_options):
         logging.info("EXECUTING Schedule %s %s" % (self.name, query_options.start_cursor.urlsafe() if query_options.start_cursor else None))
 
