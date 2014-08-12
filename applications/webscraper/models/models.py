@@ -15,7 +15,6 @@ class Result(ndb.Expando):
         super(Result, self).__init__(*args, **kwds)
 
     @staticmethod
-    @ndb.non_transactional
     def fetch(results_key, query_options):
         query_options.entities, query_options.end_cursor, query_options.has_next = Result.query(ancestor=results_key).fetch_page(query_options.limit, keys_only=query_options.keys_only, start_cursor=query_options.start_cursor)
         return query_options.entities
@@ -125,23 +124,23 @@ class Task(ndb.Model):
 
     @ndb.transactional
     def schedule(self, query_options):
-        logging.info("Executing Schedule %s %s" % (self.name, query_options.start_cursor.urlsafe() if query_options.start_cursor else None))
+        logging.info("EXECUTING Schedule %s %s" % (self.name, query_options.start_cursor.urlsafe() if query_options.start_cursor else None))
 
         query_options.limit = 4  # we can only handle 5 transactional tasks per schedule
         urls = list(query_options.entities or self.get_urls(query_options))
         tasks = [taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls]
 
         ## Schedule one task per url ##
-        logging.info("Scheduling %s Tasks for running" % len(urls))
+        logging.info("SCHEDULING %s Tasks for running" % len(urls))
         Task.QUEUE.add(tasks, transactional=True)
 
         ## Schedule next batch where last batch ended ##
         if urls and query_options.end_cursor and query_options.has_next:
-            logging.info("Scheduling Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
+            logging.info("SCHEDULING Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
             Task.QUEUE.add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
 
     def run(self, url, store=True):
-        logging.info("Running %s" % url)
+        logging.info("RUNNING %s" % url)
         return []
 
         ## Fetch Result ##
@@ -154,7 +153,7 @@ class Task(ndb.Model):
         ## Store result in database ##
         if store:
             ndb.put_multi(results)
-            logging.info("Put %s results" % len(results))
+            logging.info("PUTTING %s results" % len(results))
 
         return results
 
