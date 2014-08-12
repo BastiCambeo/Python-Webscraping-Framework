@@ -6,6 +6,12 @@
 application: idpscraper
 version: 1
 api_version: 1
+instance_class: F4
+automatic_scaling:
+  max_idle_instances: 1
+  min_pending_latency: 2.0s
+  max_pending_latency: 7.0s
+  max_concurrent_requests: 5
 runtime: python27
 threadsafe: true    # true for WSGI & concurrent requests (Python 2.7 only)
 

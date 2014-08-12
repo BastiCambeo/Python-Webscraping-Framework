@@ -168,6 +168,16 @@ class Query_Options(object):
         self.has_next = hast_next
         self.entities = entities
 
+def gae_taskqueue(func):
+    from google.appengine.runtime import apiproxy_errors
+    from gluon import HTTP
+    def inner():
+        try:
+            func()
+        except apiproxy_errors.OverQuotaError as e:
+            raise HTTP(503)
+    return inner
+
 class zipset(set):
     """ This set does compress its content such that it comes very close to a bloomfilter without false positives """
     def add(self, value, **kwargs):

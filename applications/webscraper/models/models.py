@@ -122,6 +122,7 @@ class Task(ndb.Model):
     def get_results(self, query_options):
         return Result.fetch(self.results_key, query_options)
 
+    @ndb.transactional(xg=True)
     def schedule(self, query_options):
         logging.info("EXECUTING Schedule %s %s" % (self.name, query_options.start_cursor.urlsafe() if query_options.start_cursor else None))
 
@@ -134,13 +135,12 @@ class Task(ndb.Model):
         Task.QUEUE.add(tasks, transactional=True)
 
         ## Schedule next batch where last batch ended ##
-        if urls and query_options.end_cursor and query_options.has_next:
+        if len(urls) == query_options.limit and query_options.end_cursor and query_options.has_next:
             logging.info("SCHEDULING Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
             Task.QUEUE.add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
 
     def run(self, url, store=True):
         logging.info("RUNNING %s" % url)
-        return []
 
         ## Fetch Result ##
         results = [Result(key=self.get_result_key(value_dict), **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]

@@ -9,6 +9,8 @@ from datetime import datetime  # date / time support
 from util import *  # for generic helpers
 from google.appengine.ext import ndb  # Database support
 patch_ndb()
+from google.appengine.api import urlfetch
+urlfetch.set_default_fetch_deadline(60)
 
 class Selector(ndb.Model):
     """ Contains information for selecting a ressource on a xml/html page """
@@ -193,5 +195,5 @@ class Scraper(object):
         """ Returns the response of an http get-request to a given url """
         logging.info("Requesting %s" % url)  # For Debugging purposes
         session = session or Session()
-        html_src = session.get(url).text
+        html_src = session.get(url, timeout=60).text
         return Scraper.parse(html_src, selectors=selectors)
