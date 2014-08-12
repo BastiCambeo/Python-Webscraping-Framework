@@ -9,21 +9,20 @@ from google.appengine.api import taskqueue, memcache  # Support for scheduled, c
 from google.appengine.ext import ndb  # Database support
 patch_ndb()
 
-DEFAULT_LIMIT = 100
-
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
     def __init__(self, *args, **kwds):
         super(Result, self).__init__(*args, **kwds)
 
     @staticmethod
+    @ndb.non_transactional
     def fetch(results_key, query_options):
-        query_options.entities, query_options.end_cursor, query_options.has_next = Result.query(ancestor=results_key).fetch_page(query_options.limit or DEFAULT_LIMIT, keys_only=query_options.keys_only, start_cursor=query_options.start_cursor)
+        query_options.entities, query_options.end_cursor, query_options.has_next = Result.query(ancestor=results_key).fetch_page(query_options.limit, keys_only=query_options.keys_only, start_cursor=query_options.start_cursor)
         return query_options.entities
 
     @staticmethod
     def delete(results_key):
-        ndb.delete_multi(Result.fetch(results_key, query_options=Query_Options(keys_only=True, limit=DEFAULT_LIMIT*10)))
+        ndb.delete_multi(Result.fetch(results_key, query_options=Query_Options(keys_only=True, limit=1000)))
 
 class UrlSelector(ndb.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
@@ -124,17 +123,27 @@ class Task(ndb.Model):
     def get_results(self, query_options):
         return Result.fetch(self.results_key, query_options)
 
+    @ndb.transactional
     def schedule(self, query_options):
-        urls = query_options.entities or self.get_urls(query_options)
+        logging.info("Executing Schedule %s %s" % (self.name, query_options.start_cursor.urlsafe() if query_options.start_cursor else None))
+
+        query_options.limit = 4  # we can only handle 5 transactional tasks per schedule
+        urls = list(query_options.entities or self.get_urls(query_options))
+        tasks = [taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls]
 
         ## Schedule one task per url ##
-        Task.QUEUE.add([taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls])
+        logging.info("Scheduling %s Tasks for running" % len(urls))
+        Task.QUEUE.add(tasks, transactional=True)
 
         ## Schedule next batch where last batch ended ##
-        if query_options.end_cursor and query_options.has_next:
-            Task.QUEUE.add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())))
+        if urls and query_options.end_cursor and query_options.has_next:
+            logging.info("Scheduling Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
+            Task.QUEUE.add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
 
     def run(self, url, store=True):
+        logging.info("Running %s" % url)
+        return []
+
         ## Fetch Result ##
         results = [Result(key=self.get_result_key(value_dict), **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
 
@@ -145,6 +154,7 @@ class Task(ndb.Model):
         ## Store result in database ##
         if store:
             ndb.put_multi(results)
+            logging.info("Put %s results" % len(results))
 
         return results
 
