@@ -133,7 +133,7 @@ class Task(ndb.Model):
         ## Schedule next batch where last batch ended ##
         if len(urls) == query_options.limit and query_options.end_cursor and query_options.has_next:
             logging.info("SCHEDULING Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
-            Task.QUEUE.add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
+            Task.Queue(name="schedule").add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
             countdown = 3600  # postpone task running after task scheduling
 
 

@@ -4,12 +4,16 @@
 
 queue:
 - name: default
-  rate: 20/s
+  rate: 100/s
   bucket_size: 100
 
 - name: task
-  rate: 5/s
+  rate: 3/s
   bucket_size: 100
   retry_parameters:
     min_backoff_seconds: 10
     max_backoff_seconds: 1800
+
+- name: schedule
+  rate: 100/s
+  bucket_size: 100
