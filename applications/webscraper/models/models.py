@@ -128,16 +128,21 @@ class Task(ndb.Model):
 
         query_options.limit = 4  # we can only handle 5 transactional tasks per schedule
         urls = list(query_options.entities or self.get_urls(query_options))
-        tasks = [taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url)) for url in urls]
-
-        ## Schedule one task per url ##
-        logging.info("SCHEDULING %s Tasks for running" % len(urls))
-        Task.QUEUE.add(tasks, transactional=True)
+        countdown = 0
 
         ## Schedule next batch where last batch ended ##
         if len(urls) == query_options.limit and query_options.end_cursor and query_options.has_next:
             logging.info("SCHEDULING Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
             Task.QUEUE.add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
+            countdown = 3600  # postpone task running after task scheduling
+
+
+        ## Schedule one task per url ##
+        tasks = [taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), countdown=countdown) for url in urls]
+        logging.info("SCHEDULING %s Tasks for running" % len(urls))
+        Task.QUEUE.add(tasks, transactional=True)
+
+
 
     def run(self, url, store=True):
         logging.info("RUNNING %s" % url)

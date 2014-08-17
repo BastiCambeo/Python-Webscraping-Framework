@@ -18,9 +18,9 @@ if 'SERVER_SOFTWARE' in os.environ and os.environ['SERVER_SOFTWARE'].find('Devel
     response.menu += [(T('Datastore Viewer'), False, '//localhost:8000/datastore')]
     response.menu += [(tasks_status, False, '//localhost:8000/taskqueue')]
 else:
-    response.menu += [(T('Database Viewer'), False, 'https://appengine.google.com/datastore/explorer?&app_id=s~idpscraper')]
-    response.menu += [(T('Database Admin'), False, 'https://ah-builtin-python-bundle-dot-idpscraper.appspot.com/_ah/datastore_admin/?app_id=s~idpscraper&adminconsolecustompage')]
-    response.menu += [(tasks_status, False, 'https://appengine.google.com/queues?&app_id=s~idpscraper')]
+    response.menu += [(T('Datastore Viewer'), False, 'https://appengine.google.com/datastore/explorer?&app_id=s~cambeotrunk')]
+    response.menu += [(T('Datastore Admin'), False, 'https://ah-builtin-python-bundle-dot-cambeotrunk.appspot.com/_ah/datastore_admin/?app_id=s~cambeotrunk&adminconsolecustompage')]
+    response.menu += [(tasks_status, False, 'https://appengine.google.com/queues?&app_id=s~cambeotrunk')]
 
 @auth.requires_login()
 def index():

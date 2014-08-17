@@ -3,14 +3,14 @@
 #  See http://code.google.com/appengine/docs/python/config/appconfig.html
 #  and http://web2py.com/book/default/chapter/11?search=app.yaml
 
-application: idpscraper
-version: 1
+application: cambeotrunk
+version: idpscraper
 api_version: 1
-instance_class: F4
+instance_class: F2
 automatic_scaling:
   max_idle_instances: 1
-  min_pending_latency: 2.0s
-  max_pending_latency: 7.0s
+  min_pending_latency: 15.0s
+  max_pending_latency: 15.0s
   max_concurrent_requests: 5
 runtime: python27
 threadsafe: true    # true for WSGI & concurrent requests (Python 2.7 only)
