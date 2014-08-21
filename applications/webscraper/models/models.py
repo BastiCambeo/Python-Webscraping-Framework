@@ -127,13 +127,13 @@ class Task(ndb.Model):
         logging.info("EXECUTING Schedule %s %s" % (self.name, query_options.start_cursor.urlsafe() if query_options.start_cursor else None))
 
         query_options.limit = 4  # we can only handle 5 transactional tasks per schedule
-        urls = list(query_options.entities or self.get_urls(query_options))
+        urls = list(self.get_urls(query_options))
         countdown = 0
 
         ## Schedule next batch where last batch ended ##
         if len(urls) == query_options.limit and query_options.end_cursor and query_options.has_next:
             logging.info("SCHEDULING Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
-            Task.Queue(name="schedule").add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
+            taskqueue.Queue(name="schedule").add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
             countdown = 3600  # postpone task running after task scheduling
 
 
@@ -152,7 +152,7 @@ class Task(ndb.Model):
 
         ## Schedule new urls on recursive call ##
         if self.is_recursive:
-            self.schedule(urls=self.get_urls(Query_Options(entities=results)))
+            self.schedule(Query_Options(entities=results))
 
         ## Store result in database ##
         if store:
