@@ -192,6 +192,17 @@ class Task(ndb.Model):
                     Selector(name="size",     xpath="""//td[preceding-sibling::th/text()="Größe:"]//text()""", type=float),
                 ],
             ),
+            Task(
+                name="Fussball_Transfers",
+                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", results_key=ndb.Key(Task, "Fussball_Spieler"), results_property="spieler_id")],
+                selectors=[
+                    Selector(name="spieler_id",     xpath="""//a[@class="megamenu"][1]/@href""", type=int),
+                    Selector(name="date",     xpath="""(//table)[3]//tr/td[2]//text()""", type=datetime),
+                    Selector(name="from",     xpath="""(//table)[3]//tr/td[5]/a/text()""", type=unicode),
+                    Selector(name="to",     xpath="""(//table)[3]//tr/td[8]/a/text()""", type=unicode),
+                    Selector(name="transfer_key",     xpath="""merge_lists(//a[@class="megamenu"][1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())""", type=unicode, is_key=True),
+                ],
+            ),
             ##### Leichtathletik #####
             Task(
                 name="Leichtathletik_Sprint_100m_Herren",
