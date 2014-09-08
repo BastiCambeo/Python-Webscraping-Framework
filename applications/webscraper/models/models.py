@@ -185,6 +185,7 @@ class Task(ndb.Model):
                 url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", results_key=ndb.Key(Task, "Fussball_Spieler"), results_property="spieler_id")],
                 selectors=[
                     Selector(name="spieler_id",     xpath="""//link[@rel="canonical"]/@href""", type=int, is_key=True),
+                    Selector(name="name",     xpath="""//div[@class="spielername-profil"]/text()"]""", type=unicode),
                     Selector(name="position",     xpath="""//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]""", type=unicode),
                     Selector(name="max_value",     xpath="""//table[@class="auflistung mt10"]/tr[3]/td/text()""", type=float),
                     Selector(name="birthday",     xpath="""//table[@class="auflistung"]//tr[2]/td/a/text()""", type=datetime),

@@ -61,7 +61,7 @@ def task():
     data = [[selector.name for selector in task.selectors]]  # titles
 
     for result in task.get_results(Query_Options(limit=100)):
-        data += [[getattr(result, selector.name) for selector in task.selectors]]
+        data += [[getattr(result, selector.name) for selector in task.selectors if hasattr(result, selector.name)]]
 
     return dict(data=data, task=task)
 
