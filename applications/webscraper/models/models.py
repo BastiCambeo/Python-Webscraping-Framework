@@ -188,8 +188,8 @@ class Task(ndb.Model):
                     Selector(name="name",     xpath="""//div[@class="spielername-profil"]/text()"]""", type=unicode),
                     Selector(name="position",     xpath="""//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]""", type=unicode),
                     Selector(name="max_value",     xpath="""//table[@class="auflistung mt10"]/tr[3]/td/text()""", type=float),
-                    Selector(name="birthday",     xpath="""//table[@class="auflistung"]//tr[2]/td/a/text()""", type=datetime),
-                    Selector(name="size",     xpath="""//table[@class="auflistung"]//tr[5]/td//text()""", type=float),
+                    Selector(name="birthday",     xpath="""//td[preceding-sibling::th/text()="Geburtsdatum:"]/a/text()""", type=datetime),
+                    Selector(name="size",     xpath="""//td[preceding-sibling::th/text()="Größe:"]//text()""", type=float),
                 ],
             ),
             ##### Leichtathletik #####
