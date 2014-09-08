@@ -3567,6 +3567,19 @@ def _parse_date_perforce(aDateString):
         return time.gmtime(rfc822.mktime_tz(tm))
 registerDateHandler(_parse_date_perforce)
 
+def _parse_date_german(aDateString):
+    """parse a date in dd.mm.yyyy TTT format"""
+    # 01.01.2010
+    _my_date_pattern = re.compile( \
+        r'(\d{,2})\.(\d{,2})\.(\d{4})')
+
+    m = _my_date_pattern.search(aDateString)
+    if m is None:
+        return None
+    day, month, year = m.groups()
+    return int(year), int(month), int(day), 0,0,0,0,0,0
+registerDateHandler(_parse_date_german)
+
 def _parse_date(dateString):
     '''Parses a variety of date formats into a 9-tuple in GMT'''
     if not dateString:
