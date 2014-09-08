@@ -73,7 +73,7 @@ class Task(ndb.Model):
 
     @property
     def name(self):
-        return unicode(self.key.id())
+        return uni(self.key.id())
 
     @property
     def key_selectors(self):
@@ -134,15 +134,13 @@ class Task(ndb.Model):
         if len(urls) == query_options.limit and query_options.end_cursor and query_options.has_next:
             logging.info("SCHEDULING Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
             taskqueue.Queue(name="schedule").add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
-            countdown = 3600  # postpone task running after task scheduling
+            countdown = 120  # postpone task running after task scheduling
 
 
         ## Schedule one task per url ##
         tasks = [taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), countdown=countdown) for url in urls]
         logging.info("SCHEDULING %s Tasks for running" % len(urls))
         Task.QUEUE.add(tasks, transactional=True)
-
-
 
     def run(self, url, store=True):
         logging.info("RUNNING %s" % url)
@@ -167,6 +165,32 @@ class Task(ndb.Model):
     @staticmethod
     def example_tasks():
         return [
+            ##### Fußball #####
+            Task(
+                name="Fussball_Saisons",
+                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/3262/kader/verein/3262/", results_key=ndb.Key(Task, "Fussball_Saisons"))],
+                selectors=[
+                    Selector(name="saison",         xpath="""//select[@name="saison_id"]/option/@value""", type=unicode, is_key=True),
+                ],
+            ),
+            Task(
+                name="Fussball_Spieler",
+                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/3262/kader/verein/3262/plus/1/saison_id/%s", results_key=ndb.Key(Task, "Fussball_Saisons"), results_property="saison")],
+                selectors=[
+                    Selector(name="spieler_id",     xpath="""//a[@class="spielprofil_tooltip"]/@href""", type=int, is_key=True),
+                ],
+            ),
+            Task(
+                name="Fussball_Spieler_Details",
+                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", results_key=ndb.Key(Task, "Fussball_Spieler"), results_property="spieler_id")],
+                selectors=[
+                    Selector(name="spieler_id",     xpath="""//link[@rel="canonical"]/@href""", type=int, is_key=True),
+                    Selector(name="position",     xpath="""//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]""", type=unicode),
+                    Selector(name="max_value",     xpath="""//table[@class="auflistung mt10"]/tr[3]/td/text()""", type=float),
+                    Selector(name="birthday",     xpath="""//table[@class="auflistung"]//tr[2]/td/a/text()""", type=datetime),
+                    Selector(name="size",     xpath="""//table[@class="auflistung"]//tr[5]/td//text()""", type=float),
+                ],
+            ),
             ##### Leichtathletik #####
             Task(
                 name="Leichtathletik_Sprint_100m_Herren",

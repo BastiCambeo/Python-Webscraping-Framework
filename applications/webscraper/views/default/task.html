@@ -77,12 +77,14 @@
 <button class="btn btn-success" onclick="schedule('{{=task.name}}')">Run</button>
 <button class="btn btn-danger advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
 <button class="btn btn-danger advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
-<button class="btn" onclick='window.location ="{{=URL('ajax', 'export_excel.xls', vars={'name': task.name})}}"'>Export to Excel</button>
+<button class="btn" onclick='window.location ="{{=url('ajax', 'export_excel.xls', vars={'name': task.name})}}"'>Export to Excel</button>
 <button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
 
 {{TABLE(data)}}
 
 <script>
-    swap_advanced();swap_advanced();  // set current view
-    update_results_properties();  // Initialize the property list
+    $(function() {
+        swap_advanced();swap_advanced();  // set current view
+        update_results_properties();  // Initialize the property list
+    })
 </script>

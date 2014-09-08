@@ -3,8 +3,13 @@ import logging
 
 def s(unicode_var):
     """ Converts unicode to utf-8 encoded string """
-    if isinstance(unicode_var, unicode):
-        unicode_var.encode("utf-8")
+    if isinstance(unicode_var, dict):
+      for key in unicode_var:
+          unicode_var[key] = s(unicode_var[key])
+    elif hasattr(unicode_var, '__iter__'):
+        unicode_var = [s[value] for value in unicode_var]
+    elif isinstance(unicode_var, unicode):
+        return unicode_var.encode("utf-8")
     return unicode_var
 
 
@@ -12,10 +17,11 @@ def uni(string_var):
     """ Converts string to unicode """
     if hasattr(string_var, '__iter__'):
         return [uni(v) for v in string_var]
+    elif isinstance(string_var, unicode):
+        return string_var
     elif isinstance(string_var, basestring):
         return string_var.decode("utf-8")
     return string_var
-
 
 def str2float(string):
     """
@@ -64,11 +70,19 @@ def str2datetime(string):
     import feedparser
     from datetime import datetime
     try:
-        if string is not None:
-            return datetime(*(feedparser._parse_date(string)[:6]))
+        return datetime(*(feedparser._parse_date(string)[:6]))
     except Exception as e:
         logging.debug("Failed to convert %s into datetime" % string)
 
+def url(*args, **kwargs):
+    from gluon import URL
+    ## if full_url is provided, split it into application/controller/function ##
+    if len(args) == 1 and args[0] and args[0][0] == "/":
+        args = args[0][1:].split("/", 2)
+
+    args = [s(v) for v in args]  # convert args to string
+    kwargs = {k: s(v) for k, v in kwargs.items()}  # convert kwargs to string
+    return URL(*args, **kwargs)
 
 class omnimethod(object):
     """ Allows to use a method as both staticmethod and instancemethod """

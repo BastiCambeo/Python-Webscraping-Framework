@@ -76,7 +76,7 @@ function swap_advanced() {
 
     if (!window.location.hash) {
         window.location.hash = "advanced";
-        $(".advanced").show();
+        $(".advanced").css( "display", "inline");
         $("#swap_advanced").text("Simple View");
     } else {
         window.location.hash = "";
