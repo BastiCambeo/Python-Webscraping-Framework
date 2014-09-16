@@ -114,7 +114,7 @@ class Task(ndb.Model):
         Result.delete(self.results_key)
         Task.QUEUE.purge()
 
-    def get_results(self, query_options=Query_Options):
+    def get_results(self, query_options=Query_Options()):
         return Result.fetch(self.results_key, query_options=query_options)
 
     def schedule(self, schedule_id=None, urls=None):

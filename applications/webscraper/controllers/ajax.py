@@ -33,14 +33,14 @@ def export_excel():
 
     name = request.vars.name
     task = Task.get(name)
-    data = task.get_results(as_table=True)
+    results = task.get_results()
     w = xlwt.Workbook()
     ws = w.add_sheet("data")
 
     ## write ##
-    for x, row in enumerate(data):
-        for y, cell in enumerate(row):
-            ws.write(x, y, cell)
+    for x, result in enumerate([Storage({selector.name:selector.name for selector in task.selectors})] + results):
+        for y, selector in enumerate(task.selectors):
+            ws.write(x, y, getattr(result, selector.name))
 
     ## save ##
     f = io.BytesIO('%s.xls' % name)
