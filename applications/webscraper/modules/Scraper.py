@@ -30,9 +30,9 @@ class Selector(ndb.Model):
         if issubclass(value, unicode):
             self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
         elif issubclass(value, int):
-            self.regex = self.regex or r"\d[\d.,]+"
+            self.regex = self.regex or r"\d[\d.,]*"
         elif issubclass(value, float):
-            self.regex = self.regex or r"\d[\d.,:]+"
+            self.regex = self.regex or r"\d[\d.,:]*"
         elif issubclass(value, datetime):
             self.regex = self.regex or r"[^\n\r ,.][^\n\r]+"
         return value
@@ -70,6 +70,7 @@ class Scraper(object):
         def merge_lists(context, *args):
             """ Merge the items of lists at same positions. If one list is shorter, its last element is repeated """
             try:
+                print repr(args)
                 return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
             except Exception as e:
                 return [""]
@@ -92,7 +93,6 @@ class Scraper(object):
         selectors_results = []
         for selector in selectors:
             nodes = parsed_tree.xpath(selector.xpath)
-
             nodes = [textify(node) for node in nodes]
 
             if selector.regex:
@@ -125,57 +125,6 @@ class Scraper(object):
             for x, selector in enumerate(selectors):
                 if not selectors_results[x]: selectors_results[x] = [None]  # Guarantee that an element is there
                 row[selector.name] = selectors_results[x][min(y, len(selectors_results[x])-1)]
-            result += [row]
-        return result
-
-    @staticmethod
-    def parse2(html_src, selectors=None):
-        """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
-
-        if not selectors:
-            return html_src  # nothing to do
-
-        parsed_tree = html.document_fromstring(html_src)
-
-        key_selector = next((selector for selector in selectors if selector.is_key), selectors[0])  # retrieve a key selector, from which any other selector has specified a relative xpath
-        key_nodes = parsed_tree.xpath(key_selector.xpath)
-        result = {}
-
-        for key_node in key_nodes:
-            for selector in selectors:
-                result[selector.name] = parsed_tree.xpath(selector.xpath)
-
-        selectors_results = []
-        for selector in selectors:
-            nodes = parsed_tree.xpath(selector.xpath)
-
-            nodes = [unicode(node.text) if hasattr(node, "text") else unicode(node) for node in nodes]
-
-            if selector.regex:
-                ## Apply regex to every single node ##
-                selector_results = []
-                for node in nodes:
-                    node = unicode(node)
-                    regex_result = re.search(selector.regex, node,  re.DOTALL | re.UNICODE)
-                    if regex_result:
-                        if regex_result.groups():
-                            selector_results += [regex_result.groups()[-1]]
-                        else:
-                            selector_results += [regex_result.group()]
-            else:
-                selector_results = nodes
-
-            ## auto cast result type ##
-            if hasattr(selector, "output_cast"):
-                selector_results = [selector.output_cast(data) for data in selector_results]
-            selectors_results += [selector_results]
-
-        ## convert selector results from a tuple of lists to a list of tuples ##
-        result = []
-        for y in range(len(selectors_results[0])):
-            row = Storage()
-            for x, selector in enumerate(selectors):
-                row[selector.name] = selectors_results[x][y] if y < len(selectors_results[x]) else None  # guarantee that an element is added
             result += [row]
         return result
 

@@ -95,18 +95,18 @@ function create_new_task() {
     }
 }
 
-function update_results_properties() {
+function update_results_properties(url_number) {
     /* When the results_id selection changes, the results_properties list must be updated */
-    var results_id = $("#results_id").val();
+    var results_id = $(".results_id").eq(url_number).val();
     $.ajax({
         url:"/webscraper/ajax/get_task_selector_names",
         type: "GET",
         dataType: "json",
         data:{name: results_id},
         success: function(selector_names) {
-            $("#results_properties").empty();
+            $(".results_properties").eq(url_number).empty();
             for (var i in selector_names) {
-                $("#results_properties").append("<option>" + selector_names[i] + "</option>")
+                $(".results_properties").eq(url_number).append("<option>" + selector_names[i] + "</option>")
             }
         }
     });

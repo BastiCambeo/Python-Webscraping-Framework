@@ -69,7 +69,7 @@ def task():
 def console():
     return dict()
 
-@cache.action(time_expire=999999999)
+#@cache.action(time_expire=999999999)
 def relative_age():
     #return repr(Result.query(ancestor = ndb.Key(Task, "Leichtathletik_Athleten")).group_by(ndb.GenericProperty("birthday")))
     from collections import OrderedDict
@@ -77,9 +77,10 @@ def relative_age():
     for month in ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]:
         birthdays[month] = 0
 
-    for athlete in Result.query(ancestor = ndb.Key(Task, "Leichtathletik_Athleten")).fetch(25000):
+    for athlete in Result.query(ancestor=ndb.Key(Task, "Leichtathletik_Athleten")).fetch(10000):
         try:
-            birthdays[athlete.birthday.strftime("%B")] += 1
+            if not (athlete.birthday.day == 1 and athlete.birthday.month == 1):  # 1.1. is a dummy date for athletes where the exact birthday is unknown
+                birthdays[athlete.birthday.strftime("%B")] += 1
         except:
             pass
     return dict(birthdays=birthdays)

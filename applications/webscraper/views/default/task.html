@@ -9,16 +9,16 @@
         <h3>URLs</h3>
 
         <div id="url_selectors">
-            {{for url_selector in task.url_selectors:}}
+            {{for i, url_selector in enumerate(task.url_selectors):}}
                 <div class="url_selector">
                     <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
                     <span class="advanced">
-                        <select name="url_results_id[]" id="results_id" onchange="update_results_properties()">
+                        <select name="url_results_id[]" class="results_id" onchange="update_results_properties({{=i}})">
                             {{for results_key in Task.query().fetch(keys_only=True):}}
                                 <option {{="selected" if url_selector.results_key == results_key else ""}}>{{=results_key.id()}}</option>
                             {{pass}}
                         </select>
-                        <select name="url_results_property[]" id="results_properties"></select>
+                        <select name="url_results_property[]" class="results_properties"></select>
                         <input type="text" name="url_start_parameter[]" placeholder="Initial Value" value="{{=url_selector.start_parameter}}" class="input_short">
                     </span>
                 </div>
@@ -54,17 +54,6 @@
         <button type="button" class="btn" onclick="add_content_selector()">+</button>
     </div>
 
-    <!-- Currently not needed
-    <div class="advanced">
-        <h3>Result Table</h3>
-        <select name="results_id">
-            {{for results_key in Task.query().fetch(keys_only=True):}}
-                <option {{="selected" if task.results_key == results_key else ""}}>{{=results_key.id()}}</option>
-            {{pass}}
-        </select>
-    </div>
-    -->
-
     <div class="advanced">
         <h3>Scheduler Interval</h3>
         <input type="text" name="period" value="{{=task.period}}" class="input_short"> Seconds (0:= Disabled)
@@ -85,6 +74,6 @@
 <script>
     $(function() {
         swap_advanced();swap_advanced();  // set current view
-        update_results_properties();  // Initialize the property list
+        for (var i=0; i<$(".results_id").length;i++) update_results_properties(i);  // Initialize the property list
     })
 </script>
