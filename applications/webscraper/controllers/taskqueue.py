@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 __author__ = 'Sebastian Hofstetter'
 
-@gae_taskqueue
+import json  # json support
+import traceback
+
 def run_task():
-    task = ndb.Key(urlsafe=request.vars.task_key).get()
-    task.run(request.vars.url)
+    url = request.vars.url
+    schedule_id = request.vars.schedule_id
 
-@gae_taskqueue
-def schedule():
-    start_cursor = ndb.Cursor(urlsafe=request.vars.start_cursor) if request.vars.start_cursor else None
-    Task.get(request.vars.name).schedule(Query_Options(start_cursor=start_cursor))
-
-session.forget()
+    Task.get(request.vars.name).run(schedule_id=schedule_id, url=url)

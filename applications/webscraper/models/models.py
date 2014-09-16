@@ -11,13 +11,9 @@ patch_ndb()
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
-    def __init__(self, *args, **kwds):
-        super(Result, self).__init__(*args, **kwds)
-
     @staticmethod
     def fetch(results_key, query_options):
-        query_options.entities, query_options.end_cursor, query_options.has_next = Result.query(ancestor=results_key).fetch_page(query_options.limit, keys_only=query_options.keys_only, start_cursor=query_options.start_cursor)
-        return query_options.entities
+        return Result.query(ancestor=results_key).fetch(query_options.limit, keys_only=query_options.keys_only)
 
     @staticmethod
     def delete(results_key):
@@ -81,9 +77,8 @@ class Task(ndb.Model):
         return [selector for selector in self.selectors if selector.is_key]
 
     @property
-    def is_recursive(self):
-        """ Returns true if this task adds results on which its own urls are based """
-        return any([url_selector.has_dynamic_url and url_selector.results_key == self.results_key for url_selector in self.url_selectors])
+    def recursive_url_selectors(self):
+        return filter(lambda url_selector: url_selector.has_dynamic_url and url_selector.results_key == self.results_key, self.url_selectors)
 
     def __init__(self, *args, **kwds):
         kwds.setdefault("key", ndb.Key(Task, kwds.pop("name", None)))
@@ -99,7 +94,7 @@ class Task(ndb.Model):
             if selector.name == name:
                 return selector
 
-    def get_urls(self, query_options):
+    def get_urls(self, query_options=Query_Options()):
         return itertools.chain(*[url_selector.get_urls(query_options) for url_selector in self.url_selectors])  # Keep generators intact!
 
     @staticmethod
@@ -107,7 +102,7 @@ class Task(ndb.Model):
         return ndb.Key(Task, name).get()
 
     def get_result_key(self, result_value_dict):
-        result_id = u"".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors])  # Assemble Result_key from key selectors
+        result_id = u"".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors if result_value_dict[selector.name]])  # Assemble Result_key from key selectors
         if result_id:
             return ndb.Key(Result, result_id, parent=self.results_key)
 
@@ -122,45 +117,31 @@ class Task(ndb.Model):
     def get_results(self, query_options):
         return Result.fetch(self.results_key, query_options)
 
-    @ndb.transactional(xg=True)
-    def schedule(self, query_options):
-        logging.info("EXECUTING Schedule %s %s" % (self.name, query_options.start_cursor.urlsafe() if query_options.start_cursor else None))
+    def schedule(self, schedule_id=None, urls=None):
+        schedule_id = schedule_id or str(int(time.time()))
 
-        query_options.limit = 4  # we can only handle 5 transactional tasks per schedule
-        urls = list(self.get_urls(query_options))
-        countdown = 0
+        for url in urls or set(self.get_urls()):
+            try:
+                taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(schedule_id=schedule_id, url=url, name=self.key.id()), name=schedule_id+str(hash(url)), queue_name="task")
+            except (taskqueue.DuplicateTaskNameError, taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError):
+                pass  # only schedule any url once per schedule
 
-        ## Schedule next batch where last batch ended ##
-        if len(urls) == query_options.limit and query_options.end_cursor and query_options.has_next:
-            logging.info("SCHEDULING Schedule %s %s" % (self.name, query_options.end_cursor.urlsafe() if query_options.end_cursor else None))
-            taskqueue.Queue(name="schedule").add(taskqueue.Task(url="/webscraper/taskqueue/schedule", params=dict(name=self.name, start_cursor=query_options.end_cursor.urlsafe())), transactional=True)
-            countdown = 120  # postpone task running after task scheduling
-
-
-        ## Schedule one task per url ##
-        tasks = [taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(task_key=self.key.urlsafe(), url=url), countdown=countdown) for url in urls]
-        logging.info("SCHEDULING %s Tasks for running" % len(urls))
-        Task.QUEUE.add(tasks, transactional=True)
-
-    def run(self, url, store=True):
-        logging.info("RUNNING %s" % url)
-
+    def run(self, url, schedule_id=None, store=True):
         ## Fetch Result ##
         results = [Result(key=self.get_result_key(value_dict), **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
 
-        ## Schedule new urls on recursive call ##
-        if self.is_recursive:
-            self.schedule(Query_Options(entities=results))
-
-        ## Store result in database ##
         if store:
+            ## Store result in database ##
             ndb.put_multi(results)
-            logging.info("PUTTING %s results" % len(results))
+
+            ## Schedule new urls on recursive call ##
+            if self.recursive_url_selectors:
+                self.schedule(schedule_id=schedule_id, urls=self.recursive_url_selectors[0].get_urls(Query_Options(entities=results)))
 
         return results
 
-    def test_run(self):
-        return self.run(next(self.get_urls(Query_Options(limit=1))), store=False)
+    def test(self):
+        return self.run(url=next(self.get_urls(Query_Options(limit=1))) ,store=False)
 
     @staticmethod
     def example_tasks():

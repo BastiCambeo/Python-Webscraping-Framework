@@ -20,12 +20,12 @@ function save(reload) {
     });
 }
 
-function schedule(name) {
+function run(name) {
     save(false);
     $.ajax({
-		url:"/webscraper/taskqueue/schedule",
-		data:{name: name},
         type: "POST",
+        url: "/webscraper/ajax/schedule_task",
+        data: {name: name},
         success: function() {
             window.location.reload();
         }
