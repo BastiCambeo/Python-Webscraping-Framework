@@ -4,11 +4,13 @@
 #if not request.is_local and request.controller != "taskqueue":
     #request.requires_https()
 
+from datetime import datetime, timedelta
+
+time_before_request = datetime.now()  # time request latency
 
 ## connect to Google BigTable (optional 'google:datastore://namespace')
 db = DAL('google:datastore')
 ## store sessions and tickets there
-from datetime import datetime, timedelta
 session.connect(request, response, db=db, cookie_expires=datetime.now() + timedelta(days=30))
 
 

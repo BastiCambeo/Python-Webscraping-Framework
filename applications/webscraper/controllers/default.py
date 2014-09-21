@@ -60,7 +60,7 @@ def task():
     ## Create data table ##
     data = [[selector.name for selector in task.selectors]]  # titles
 
-    for result in task.get_results(Query_Options(limit=100)):
+    for result in task.get_results(Query_Options(limit=1000)):
         data += [[getattr(result, selector.name) for selector in task.selectors if hasattr(result, selector.name)]]
 
     return dict(data=data, task=task)

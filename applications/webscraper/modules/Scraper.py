@@ -141,7 +141,12 @@ class Scraper(object):
     @staticmethod
     def http_request(url, selectors=None, session=None):
         """ Returns the response of an http get-request to a given url """
-        logging.info("Requesting %s" % url)  # For Debugging purposes
+
+        time_before = datetime.now()
+
         session = session or Session()
         html_src = session.get(url, timeout=60).text
-        return Scraper.parse(html_src, selectors=selectors)
+        parsing = Scraper.parse(html_src, selectors=selectors)
+
+        logging.info("Requested [%s seconds] %s" % ((datetime.now() - time_before).total_seconds(), url))  # For Debugging purposes
+        return parsing
