@@ -86,7 +86,7 @@ class Task(ndb.Model):
             ## Holds only on new creations, not on datastore retrievals ##
             kwds.setdefault("results_key", kwds.get("key"))
             kwds.setdefault("selectors", [Selector(is_key=True)])
-            kwds.setdefault("url_selectors", [UrlSelector(results_key=self.key)])
+            kwds.setdefault("url_selectors", [UrlSelector(results_key=kwds.get("key"))])
         super(Task, self).__init__(*args, **kwds)
 
     def get_selector(self, name):
@@ -156,7 +156,7 @@ class Task(ndb.Model):
             ),
             Task(
                 name="Fussball_Spieler",
-                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/3262/kader/verein/3262/plus/1/saison_id/%s", results_key=ndb.Key(Task, "Fussball_Saisons"), results_property="saison")],
+                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/%s", results_key=ndb.Key(Task, "Fussball_Vereine"), results_property="verein_url")],
                 selectors=[
                     Selector(name="spieler_id",     xpath="""//a[@class="spielprofil_tooltip"]/@href""", type=int, is_key=True),
                 ],
@@ -182,6 +182,38 @@ class Task(ndb.Model):
                     Selector(name="from",     xpath="""(//table)[3]//tr/td[5]/a/text()""", type=unicode),
                     Selector(name="to",     xpath="""(//table)[3]//tr/td[8]/a/text()""", type=unicode),
                     Selector(name="transfer_key",     xpath="""merge_lists(//a[@class="megamenu"][1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())""", type=unicode, is_key=True),
+                ],
+            ),
+            Task(
+                name="Fussball_Vereine",
+                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", results_key=ndb.Key(Task, "Fussball_Saisons"), results_property="saison")],
+                selectors=[
+                    Selector(name="verein_url",     xpath="""//table[@class='items']//tr/td[@class='hauptlink no-border-links']/a[1]/@href""", type=unicode, is_key=True),
+                ],
+            ),
+            Task(
+                name="Fussball_Verletzungen",
+                url_selectors=[
+                    UrlSelector(url_raw="http://www.transfermarkt.de/miroslav-klose/verletzungen/spieler/%s", results_key=ndb.Key(Task, "Fussball_Spieler"), results_property="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de%s", results_key=ndb.Key(Task, "Fussball_Verletzungen"), results_property="next_page")],
+                selectors=[
+                    Selector(name="spieler_id",     xpath="""//a[@class="megamenu"][1]/@href""", type=int),
+                    Selector(name="injury",     xpath="""//table[@class="items"]//tr/td[2]/text()""", type=unicode),
+                    Selector(name="from",     xpath="""//table[@class="items"]//tr/td[3]/text()""", type=datetime),
+                    Selector(name="to",     xpath="""//table[@class="items"]//tr/td[4]/text()""", type=datetime),
+                    Selector(name="duration",     xpath="""//table[@class="items"]//tr/td[5]/text()""", type=int),
+                    Selector(name="missed_games",     xpath="""//table[@class="items"]//tr/td[6]/text()""", type=int),
+                    Selector(name="injury_key",     xpath="""merge_lists(//a[@class="megamenu"][1]/@href, //table[@class="items"]//tr/td[3]/text())""", type=unicode, is_key=True),
+                    Selector(name="next_page",     xpath="""//li[@class="naechste-seite"]/a/@href""", type=unicode),
+                ],
+            ),
+            Task(
+                name="Fussball_Einsaetze",
+                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/manuel-neuer/leistungsdatendetails/spieler/17259/plus/1/saison/%s", results_key=ndb.Key(Task, "Fussball_Saisons"), results_property="saison")],
+                selectors=[
+                    Selector(name="spieler_id",     xpath="""//a[@class="megamenu"][1]/@href""", type=int),
+                    Selector(name="date",     xpath="""//div[@class="responsive-table"]/table//tr[not(contains(td[8]/text(), 'ohne'))]/td[2]""", type=datetime),
+                    Selector(name="einsatz_key",     xpath="""merge_lists(//a[@class="megamenu"][1]/@href, //div[@class="responsive-table"]/table//tr[not(contains(td[8]/text(), 'ohne'))]/td[2])""", type=unicode, is_key=True),
                 ],
             ),
             ##### Leichtathletik #####

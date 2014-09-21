@@ -9,7 +9,7 @@ assert auth.is_logged_in()  # all actions require login
 
 def test_task():
     try:
-        results = Task.get(request.vars.name).test()[:15]
+        results = Task.get(request.vars.name).test()[:30]
         return json.dumps(
             {"results": "<br>".join([repr(result._to_dict(exclude=["results_key"])) for result in results])    })
     except Exception as e:
