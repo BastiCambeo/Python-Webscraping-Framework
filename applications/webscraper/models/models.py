@@ -151,7 +151,7 @@ class Task(ndb.Model):
                 name="Fussball_Saisons",
                 url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/3262/kader/verein/3262/", results_key=ndb.Key(Task, "Fussball_Saisons"))],
                 selectors=[
-                    Selector(name="saison",         xpath="""//select[@name="saison_id"]/option/@value""", type=unicode, is_key=True),
+                    Selector(name="saison",         xpath="""//select[@name="saison_id"]/option/@value""", type=int, regex="20[^\n\r ,.][^\n\r]+", is_key=True),
                 ],
             ),
             Task(
