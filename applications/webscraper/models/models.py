@@ -122,17 +122,19 @@ class Task(ndb.Model):
     def schedule(self, schedule_id=None, urls=None):
         schedule_id = schedule_id or str(int(time.time()))
 
-        for url in urls or set(self.get_urls()):
+        urls = set(urls) if urls is not None else set(self.get_urls())
+
+        for url in urls:
             try:
                 taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(schedule_id=schedule_id, url=url, name=self.key.id()), name=schedule_id+str(hash(url)), queue_name="task")
             except (taskqueue.DuplicateTaskNameError, taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError):
-                pass  # only schedule any url once per schedule
+                logging.warning("%s already scheduled" % url)  # only schedule any url once per schedule
 
     def run(self, url, schedule_id=None, store=True):
         ## Fetch Result ##
         results = [Result(key=self.get_result_key(value_dict), task_key=self.key, **value_dict) for value_dict in Scraper.http_request(url, selectors=self.selectors) if self.get_result_key(value_dict)]
 
-        if store:
+        if store and results:
             ## Store result in database ##
             ndb.put_multi(results)
 
