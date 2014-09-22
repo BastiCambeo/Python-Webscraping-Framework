@@ -10,6 +10,7 @@ time_before_request = datetime.now()  # time request latency
 
 ## connect to Google BigTable (optional 'google:datastore://namespace')
 db = DAL('google:datastore')
+
 ## store sessions and tickets there
 session.connect(request, response, db=db, cookie_expires=datetime.now() + timedelta(days=30))
 

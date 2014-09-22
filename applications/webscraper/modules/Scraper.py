@@ -145,7 +145,7 @@ class Scraper(object):
         time_before = datetime.now()
 
         session = session or Session()
-        html_src = session.get(url, timeout=60).text
+        html_src = session.get(url, timeout=120).text
         parsing = Scraper.parse(html_src, selectors=selectors)
 
         logging.info("Requested [%s seconds] %s" % ((datetime.now() - time_before).total_seconds(), url))  # For Debugging purposes

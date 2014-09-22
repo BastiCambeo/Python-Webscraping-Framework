@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 __author__ = 'Sebastian Hofstetter'
 
+@gae_taskqueue
 def run_task():
     url = request.vars.url
     schedule_id = request.vars.schedule_id

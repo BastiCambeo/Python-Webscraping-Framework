@@ -8,8 +8,8 @@ queue:
   bucket_size: 100
 
 - name: task
-  rate: 5/s
-  bucket_size: 100
+  rate: 4/s
+  bucket_size: 4
   retry_parameters:
     min_backoff_seconds: 60
     max_backoff_seconds: 3600
