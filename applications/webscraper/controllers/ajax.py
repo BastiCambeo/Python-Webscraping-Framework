@@ -11,7 +11,7 @@ def test_task():
     try:
         results = Task.get(request.vars.name).test()[:30]
         return json.dumps(
-            {"results": "<br>".join([repr(result._to_dict(exclude=["results_key"])) for result in results])    })
+            {"results": "<br>".join([repr(result._to_dict(exclude=["task_key"])) for result in results])    })
     except Exception as e:
         traceback.print_exc()
         return json.dumps({"results": e.message})
@@ -64,8 +64,8 @@ def save_task():
     task.period = int(request.vars.period)
     task.url_selectors = [UrlSelector(
                             url_raw=request.vars.getlist("url_raw[]")[i],
-                            results_key=ndb.Key(Task, request.vars.getlist("url_results_id[]")[i]),
-                            results_property=request.vars.getlist("url_results_property[]")[i],
+                            task_key=ndb.Key(Task, request.vars.getlist("url_results_id[]")[i]),
+                            selector_name=request.vars.getlist("url_selector_name[]")[i],
                             start_parameter=request.vars.getlist("url_start_parameter[]")[i]
                           ) for i in range(len(request.vars.getlist("url_raw[]")))]
     task.selectors = [Selector(
@@ -88,6 +88,7 @@ def result_count():
 
 def put_tasks():
     ndb.put_multi(Task.example_tasks())
+    redirect("/")
 
 def run_command():
     try:

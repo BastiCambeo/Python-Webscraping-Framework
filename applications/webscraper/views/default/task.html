@@ -14,13 +14,13 @@
                     <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
                     <span class="advanced">
                         <select name="url_results_id[]" class="results_id" onchange="update_results_properties({{=i}})">
-                            {{for results_key in Task.query().fetch(keys_only=True):}}
-                                <option {{="selected" if url_selector.results_key == results_key else ""}}>{{=results_key.id()}}</option>
+                            {{for task_key in Task.query().fetch(keys_only=True):}}
+                                <option {{="selected" if url_selector.task_key == task_key else ""}}>{{=task_key.id()}}</option>
                             {{pass}}
                         </select>
-                        <select name="url_results_property[]" class="results_properties">
-                            {{for selector in url_selector.results_key.get().selectors:}}
-                                <option {{="selected" if url_selector.results_property == selector.name else ""}}>{{=selector.name}}</option>
+                        <select name="url_selector_name[]" class="results_properties">
+                            {{for selector in url_selector.task_key.get().selectors:}}
+                                <option {{="selected" if url_selector.selector_name == selector.name else ""}}>{{=selector.name}}</option>
                             {{pass}}
                         </select>
                         <input type="text" name="url_start_parameter[]" placeholder="Initial Value" value="{{=url_selector.start_parameter}}" class="input_short">
