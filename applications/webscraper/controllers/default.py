@@ -85,5 +85,13 @@ def injuries():
 
 @cache.action(time_expire=999999999)
 def spieler_details():
-    injury_dict = {result.spieler_id: result for result in ndb.Key(Task, "Fussball_Verletzungen").get().get_results()}
+    from collections import Counter
+    injury_counts = Counter([result.spieler_id for result in ndb.Key(Task, "Fussball_Verletzungen").get().get_results()])
+    task = ndb.Key(Task, "Fussball_Spieler_Details").get()
+    data = [tuple(selector.name for selector in task.selectors) + ("injury_count",)]
+    for result in task.get_results():
+        data.append(tuple(getattr(result, selector.name) for selector in task.selectors) + (injury_counts[result.spieler_id], ))
+    response.headers["Content-Type"] = "application/vnd.ms-excel"
+    return Task.export_data_to_excel(data)
+
 
