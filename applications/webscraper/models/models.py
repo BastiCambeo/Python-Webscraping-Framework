@@ -181,11 +181,11 @@ class Task(ndb.Model):
                 name="Fussball_Transfers",
                 url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id")],
                 selectors=[
-                    Selector(name="spieler_id",     xpath="""//a[@class="megamenu"][1]/@href""", type=int),
+                    Selector(name="spieler_id",     xpath="""(//a[@class="megamenu"])[1]/@href""", type=int),
                     Selector(name="date",     xpath="""(//table)[3]//tr/td[2]//text()""", type=datetime),
                     Selector(name="from",     xpath="""(//table)[3]//tr/td[5]/a/text()""", type=unicode),
                     Selector(name="to",     xpath="""(//table)[3]//tr/td[8]/a/text()""", type=unicode),
-                    Selector(name="transfer_key",     xpath="""merge_lists(//a[@class="megamenu"][1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())""", type=unicode, is_key=True),
+                    Selector(name="transfer_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())""", type=unicode, is_key=True),
                 ],
             ),
             Task(
@@ -201,13 +201,13 @@ class Task(ndb.Model):
                     UrlSelector(url_raw="http://www.transfermarkt.de/spieler/verletzungen/spieler/%s", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
                     UrlSelector(url_raw="http://www.transfermarkt.de%s", task_key=ndb.Key(Task, "Fussball_Verletzungen"), selector_name="next_page")],
                 selectors=[
-                    Selector(name="spieler_id",     xpath="""//a[@class="megamenu"][1]/@href""", type=int),
+                    Selector(name="spieler_id",     xpath="""(//a[@class="megamenu"])[1]/@href""", type=int),
                     Selector(name="injury",     xpath="""//table[@class="items"]//tr/td[2]/text()""", type=unicode),
                     Selector(name="from",     xpath="""//table[@class="items"]//tr/td[3]/text()""", type=datetime),
                     Selector(name="to",     xpath="""//table[@class="items"]//tr/td[4]/text()""", type=datetime),
                     Selector(name="duration",     xpath="""//table[@class="items"]//tr/td[5]/text()""", type=int),
                     Selector(name="missed_games",     xpath="""//table[@class="items"]//tr/td[6]/text()""", type=int),
-                    Selector(name="injury_key",     xpath="""merge_lists(//a[@class="megamenu"][1]/@href, //table[@class="items"]//tr/td[3]/text())""", type=unicode, is_key=True),
+                    Selector(name="injury_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //table[@class="items"]//tr/td[3]/text())""", type=unicode, is_key=True),
                     Selector(name="next_page",     xpath="""//li[@class="naechste-seite"]/a/@href""", type=unicode),
                 ],
             ),
@@ -215,9 +215,9 @@ class Task(ndb.Model):
                 name="Fussball_Einsaetze",
                 url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/17259/plus/1/saison/%s", task_key=ndb.Key(Task, "Fussball_Saisons"), selector_name="saison")],
                 selectors=[
-                    Selector(name="spieler_id",     xpath="""//a[@class="megamenu"][1]/@href""", type=int),
+                    Selector(name="spieler_id",     xpath="""(//a[@class="megamenu"])[1]/@href""", type=int),
                     Selector(name="date",     xpath="""//div[@class="responsive-table"]/table//tr[not(contains(td[8]/text(), 'ohne'))]/td[2]""", type=datetime),
-                    Selector(name="einsatz_key",     xpath="""merge_lists(//a[@class="megamenu"][1]/@href, //div[@class="responsive-table"]/table//tr[not(contains(td[8]/text(), 'ohne'))]/td[2])""", type=unicode, is_key=True),
+                    Selector(name="einsatz_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //div[@class="responsive-table"]/table//tr[not(contains(td[8]/text(), 'ohne'))]/td[2])""", type=unicode, is_key=True),
                 ],
             ),
             ##### Leichtathletik #####

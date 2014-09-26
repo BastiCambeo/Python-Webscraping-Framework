@@ -30,6 +30,7 @@ def delete_results():
 def export_excel():
     import xlwt  # Excel export support
     import io  # for files in memory
+    import itertools
 
     name = request.vars.name
     task = Task.get(name)
@@ -38,14 +39,18 @@ def export_excel():
     ws = w.add_sheet("data")
 
     ## write ##
-    for x, result in enumerate([Storage({selector.name:selector.name for selector in task.selectors})] + results):
+    for x, result in enumerate(itertools.chain([Storage({selector.name:selector.name for selector in task.selectors})],results)):
         for y, selector in enumerate(task.selectors):
             ws.write(x, y, getattr(result, selector.name))
+
+    del results, result
 
     ## save ##
     f = io.BytesIO('%s.xls' % name)
     w.save(f)
+    del w, ws
     f.seek(0)
+    logging.info("excel file size: %s" % f.__sizeof__())
     response.headers["Content-Type"] = "application/vnd.ms-excel"
     return f.read()
 

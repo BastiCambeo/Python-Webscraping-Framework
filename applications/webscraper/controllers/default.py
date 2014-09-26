@@ -84,5 +84,6 @@ def relative_age():
             pass
     return dict(birthdays=birthdays)
 
+@cache.action(time_expire=999999999)
 def injuries():
-    return BEAUTIFY(sorted(set(result.injury for result in Task.get("Fußball_Spieler_Verletzungen").get_results())))
+    return BEAUTIFY(sorted(set(result.injury for result in Task.get("Fussball_Verletzungen").get_results())))
