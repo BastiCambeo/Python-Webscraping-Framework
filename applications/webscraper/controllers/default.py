@@ -56,12 +56,7 @@ def call():
 def task():
     task = Task.get(request.vars.name)
     response.title = task.name
-
-    ## Create data table ##
-    data = [[selector.name for selector in task.selectors]]  # titles
-
-    for result in task.get_results(Query_Options(limit=1000)):
-        data += [[getattr(result, selector.name) for selector in task.selectors if hasattr(result, selector.name)]]
+    data = task.get_results_as_table(Query_Options(limit=100))
 
     return dict(data=data, task=task)
 
@@ -87,3 +82,8 @@ def relative_age():
 @cache.action(time_expire=999999999)
 def injuries():
     return BEAUTIFY(sorted(set(result.injury for result in Task.get("Fussball_Verletzungen").get_results())))
+
+@cache.action(time_expire=999999999)
+def spieler_details():
+    injury_dict = {result.spieler_id: result for result in ndb.Key(Task, "Fussball_Verletzungen").get().get_results()}
+

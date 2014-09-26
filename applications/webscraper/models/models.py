@@ -119,6 +119,12 @@ class Task(ndb.Model):
         query_options = query_options or Query_Options()
         return Result.query(Result.task_key == self.key).fetch(limit=query_options.limit, keys_only=query_options.keys_only)
 
+    def get_results_as_table(self, query_options=None):
+        results = self.get_results(query_options=query_options)
+        yield tuple(selector.name for selector in self.selectors)
+        for result in results:
+            yield tuple(getattr(result, selector.name) for selector in self.selectors)
+
     def schedule(self, schedule_id=None, urls=None):
         schedule_id = schedule_id or str(int(time.time()))
 
@@ -147,6 +153,30 @@ class Task(ndb.Model):
     def test(self):
         return self.run(url=next(self.get_urls(Query_Options(limit=1))), store=False)
 
+    def export_to_excel(self):
+        return Task.export_data_to_excel(data=self.get_results_as_table())
+
+    @staticmethod
+    def export_data_to_excel(data):
+        import xlwt  # Excel export support
+        import io  # for files in memory
+
+        w = xlwt.Workbook()
+        ws = w.add_sheet("data")
+
+        ## write ##
+        for x, row in enumerate(data):
+            for y, column in enumerate(row):
+                ws.write(x, y, column)
+
+        ## save ##
+        f = io.BytesIO('%s.xls' % "export")
+        w.save(f)
+        del w, ws
+        f.seek(0)
+        logging.info("excel file size: %s" % f.__sizeof__())
+        return f.read()
+
     @staticmethod
     def example_tasks():
         return [
@@ -170,7 +200,7 @@ class Task(ndb.Model):
                 url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id")],
                 selectors=[
                     Selector(name="spieler_id",     xpath="""//link[@rel="canonical"]/@href""", type=int, is_key=True),
-                    Selector(name="name",     xpath="""//div[@class="spielername-profil"]/text()"]""", type=unicode),
+                    Selector(name="name",     xpath="""//div[@class="spielername-profil"]/text()""", type=unicode),
                     Selector(name="position",     xpath="""//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]""", type=unicode),
                     Selector(name="max_value",     xpath="""//table[@class="auflistung mt10"]/tr[3]/td/text()""", type=float),
                     Selector(name="birthday",     xpath="""//td[preceding-sibling::th/text()="Geburtsdatum:"]/a/text()""", type=datetime),
