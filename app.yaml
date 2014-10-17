@@ -4,14 +4,15 @@
 #  and http://web2py.com/book/default/chapter/11?search=app.yaml
 
 application: cambeotrunk
-module: back
 version: 1
 
+module: back
 instance_class: B8
 basic_scaling:
   max_instances: 1
   idle_timeout: 10m
 
+#module: default
 #instance_class: F2
 #automatic_scaling:
 #  max_idle_instances: 1
@@ -66,4 +67,4 @@ builtins:
 
 libraries:
 - name: lxml
-  version: latest
+  version: 2.3.5

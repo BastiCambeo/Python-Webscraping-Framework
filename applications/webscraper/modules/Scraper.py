@@ -67,18 +67,31 @@ class Scraper(object):
         def textify(node):
             return (unicode(node.text) if hasattr(node, "text") else unicode(node)).strip()
 
+        def pack(nodes):
+            """ workaround for appengine: I don't know why, but appengine shuffles the returned lists of the following lxml additions. Include order in strings to compensate. """
+            return ["%s|||%s" % (i, node) for i, node in enumerate(nodes)]
+
+        def unpack(packed_nodes):
+            """ see pack() """
+            if packed_nodes and "|||" in packed_nodes[0]:
+                packed_nodes = [node.split("|||") for node in packed_nodes]
+                return [packed_node[1] for packed_node in sorted(packed_nodes, key=lambda packed_node: int(packed_node[0]))]
+            return packed_nodes
+
         def merge_lists(context, *args):
             """ Merge the items of lists at same positions. If one list is shorter, its last element is repeated """
             try:
-                return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
+                return pack([" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))])
             except Exception as e:
                 return [""]
 
         def exe(context, nodes, path):
+            """ Executes a given xpath with each node in the first xpath as context node """
             try:
-                return [textify(node.xpath(path).pop()) for node in nodes]
+                return pack([textify(node.xpath(path).pop()) if node.xpath(path) else "" for node in nodes])
             except Exception as e:
                 return [""]
+
 
         ns = etree.FunctionNamespace(None)
         ns['merge_lists'] = merge_lists
@@ -91,7 +104,7 @@ class Scraper(object):
 
         selectors_results = []
         for selector in selectors:
-            nodes = parsed_tree.xpath(selector.xpath)
+            nodes = unpack(parsed_tree.xpath(selector.xpath))
             nodes = [textify(node) for node in nodes]
 
             if selector.regex:

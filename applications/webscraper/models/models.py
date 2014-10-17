@@ -123,7 +123,7 @@ class Task(ndb.Model):
         results = self.get_results(query_options=query_options)
         yield tuple(selector.name for selector in self.selectors)
         for result in results:
-            yield tuple(getattr(result, selector.name) for selector in self.selectors)
+            yield tuple(getattr(result, selector.name) for selector in self.selectors if hasattr(result, selector.name))
 
     def schedule(self, schedule_id=None, urls=None):
         schedule_id = schedule_id or str(int(time.time()))
@@ -131,10 +131,15 @@ class Task(ndb.Model):
         urls = set(urls) if urls is not None else set(self.get_urls())
 
         for url in urls:
-            try:
-                taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(schedule_id=schedule_id, url=url, name=self.key.id()), name=schedule_id+str(hash(url)), queue_name="task")
-            except (taskqueue.DuplicateTaskNameError, taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError):
-                logging.warning("%s already scheduled" % url)  # only schedule any url once per schedule
+            while True:  # try until success
+                try:
+                    taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(schedule_id=schedule_id, url=url, name=self.key.id()), name=schedule_id+str(hash(url)), queue_name="task", target="1.default")
+                    break
+                except (taskqueue.DuplicateTaskNameError, taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError):
+                    logging.warning("%s already scheduled" % url)  # only schedule any url once per schedule
+                except Exception as e:
+                    logging.error("Unexptected scheduling exception. Continue nevertheless: " + e.message)
+                    time.sleep(1)
 
     def run(self, url, schedule_id=None, store=True):
         ## Fetch Result ##
@@ -239,15 +244,31 @@ class Task(ndb.Model):
                     Selector(name="missed_games",     xpath="""//table[@class="items"]//tr/td[6]/text()""", type=int),
                     Selector(name="injury_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //table[@class="items"]//tr/td[3]/text())""", type=unicode, is_key=True),
                     Selector(name="next_page",     xpath="""//li[@class="naechste-seite"]/a/@href""", type=unicode),
+                    Selector(name="club",     xpath="""exe(//table[@class="items"]//tr/td[6],".//@title")""", type=unicode),
                 ],
             ),
             Task(
                 name="Fussball_Einsaetze",
-                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/17259/plus/1/saison/%s", task_key=ndb.Key(Task, "Fussball_Saisons"), selector_name="saison")],
+                url_selectors=[
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2000", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2001", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2002", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2003", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2004", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2005", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2006", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2007", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2008", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2009", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2010", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2011", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2012", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2013", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2014", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
+                ],
                 selectors=[
-                    Selector(name="spieler_id",     xpath="""(//a[@class="megamenu"])[1]/@href""", type=int),
-                    Selector(name="date",     xpath="""//div[@class="responsive-table"]/table//tr[not(contains(td[8]/text(), 'ohne'))]/td[2]""", type=datetime),
-                    Selector(name="einsatz_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //div[@class="responsive-table"]/table//tr[not(contains(td[8]/text(), 'ohne'))]/td[2])""", type=unicode, is_key=True),
+                    Selector(name="einsatz_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //div[@class="responsive-table"]/table//tr[@class=""]/td[2])""", type=unicode, is_key=True),
+                    # for "Verletzungsbedingte Wechsel": //div[@class="responsive-table"]/table//tr[contains(td[16]//@title, "Verletzungsbedingter Wechsel")]/td[2]
                 ],
             ),
             ##### Leichtathletik #####
