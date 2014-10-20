@@ -96,7 +96,7 @@ class Task(ndb.Model):
         return ndb.Key(Task, name).get()
 
     def get_result_key(self, result_value_dict):
-        result_id = u"".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors if result_value_dict[selector.name]])  # Assemble Result_key from key selectors
+        result_id = u" ".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors if result_value_dict[selector.name]])  # Assemble Result_key from key selectors
         if result_id:
             return ndb.Key(Result, self.name + result_id)
 
@@ -323,9 +323,9 @@ class Task(ndb.Model):
                     Selector(name="last_name", xpath="""(//table)[1]//tr[.//a]/td/a/span/text()""", type=unicode),
                     Selector(name="performance", xpath="""(//table)[1]//tr[.//a]/td[2]/text()""", type=float),
                     Selector(name="datetime", xpath="""(//table)[1]//tr[.//a]/td[last()]/text()""", type=datetime, is_key=True),
-                    Selector(name="gender", xpath="""//meta[@property="og:url"]/@content""", xpath=".+/([^/]+)/", type=unicode),
-                    Selector(name="class", xpath="""//meta[@property="og:url"]/@content""", xpath=".+/([^/]+)", type=unicode),
-                    Selector(name="discipline", xpath="""//meta[@property="og:url"]/@content""", type=unicode, xpath=".+/([^/]+)/[^/]+/[^/]+/[^/]+", is_key=True),
+                    Selector(name="gender", xpath="""//meta[@property="og:url"]/@content""", regex=".+/([^/]+)/", type=unicode),
+                    Selector(name="class", xpath="""//meta[@property="og:url"]/@content""", regex=".+/([^/]+)", type=unicode),
+                    Selector(name="discipline", xpath="""//meta[@property="og:url"]/@content""", type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+", is_key=True),
                 ],
             ),
             Task(

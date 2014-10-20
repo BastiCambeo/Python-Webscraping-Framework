@@ -39,7 +39,7 @@
         <div id="content_selectors">
            {{for i, selector in enumerate(task.selectors):}}
                 <div class="content_selector">
-                    <input type="radio" {{="checked" if selector.is_key else ""}} name="selector_is_key" value="{{=i}}"> Key &nbsp;&nbsp;
+                    <input type="checkbox" {{="checked" if selector.is_key else ""}} name="selector_is_key" value="{{=i}}"> Key &nbsp;&nbsp;
                     <input type="text" name="selector_name[]" value="{{=selector.name}}" placeholder='Player Height' class="input_short">
                     <input type="text" name="selector_xpath[]" value="{{=selector.xpath}}" placeholder='//div[class="player_height"]//text()' class="input_long">
                     <span class="advanced">
