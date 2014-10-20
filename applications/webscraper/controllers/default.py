@@ -56,7 +56,7 @@ def call():
 def task():
     task = Task.get(request.vars.name)
     response.title = task.name
-    data = task.get_results_as_table(Query_Options(limit=100))
+    data = task.get_results_as_table(Query_Options(limit=500))
 
     return dict(data=data, task=task)
 
@@ -94,9 +94,13 @@ def spieler_details():
     response.headers["Content-Type"] = "application/vnd.ms-excel"
     return Task.export_data_to_excel(data)
 
-@cache.action(time_expire=999999999)
 def injuries_in_action():
     injury_keys = Task.get("Fussball_Verletzungen").get_results(query_options=Query_Options(keys_only=True))  # get all injuries
     game_keys = [ndb.Key("Result", "Fussball_Einsaetze" + injury_key.id()[21:]) for injury_key in injury_keys]  # get all games that correspond to an injury
-    injuries = [game.key.id() for game in ndb.get_multi(game_keys) if game]
+    injury_keys = [ndb.Key("Result", "Fussball_Verletzungen" + game.key.id()[18:]) for game in ndb.get_multi(game_keys) if game]
+    injuries = ndb.get_multi(injury_keys)
+    for injury in injuries:
+        injury.in_action = 1
+    ndb.put_multi(injuries)
+    injuries = ndb.get_multi(injury_keys)
     return BEAUTIFY(injuries)

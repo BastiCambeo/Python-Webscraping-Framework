@@ -67,7 +67,14 @@ def str2int(string):
     return int(f) if f is not None else f
 
 def str2datetime(string):
-    import feedparser
+    """
+    >>> str2datetime("01.01.1990")
+    datetime.datetime(1990, 1, 1, 0, 0)
+
+    >>> str2datetime("25 AUG 2012")
+    datetime.datetime(2012, 8, 25, 0, 0)
+    """
+    import feedparser, datetime
     from datetime import datetime
     try:
         return datetime(*(feedparser._parse_date(string)[:6]))

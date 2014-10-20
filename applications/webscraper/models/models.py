@@ -123,7 +123,7 @@ class Task(ndb.Model):
         results = self.get_results(query_options=query_options)
         yield tuple(selector.name for selector in self.selectors)
         for result in results:
-            yield tuple(getattr(result, selector.name) for selector in self.selectors if hasattr(result, selector.name))
+            yield tuple(getattr(result, selector.name) if hasattr(result, selector.name) else None for selector in self.selectors)
 
     def schedule(self, schedule_id=None, urls=None):
         schedule_id = schedule_id or str(int(time.time()))
@@ -312,6 +312,27 @@ class Task(ndb.Model):
                     Selector(name="place", xpath="""//div[@id="panel-progression"]//tr[count(td)>3]//td[last()-1]""", type=unicode),
                     Selector(name="discipline", xpath="""exe(//div[@id="panel-progression"]//tr[count(td)>3]//td[2], "../preceding::tr/td[@class='sub-title']")""", type=unicode),
                     Selector(name="performance_key", xpath="""merge_lists(//div[@id="panel-progression"]//tr[count(td)>3]/td[last()], //div[@id="panel-progression"]//tr[count(td)>3]/td[1], //meta[@name="url"]/@content)""", type=unicode, is_key=True),
+                ],
+            ),
+            Task(
+                name="Leichtathletik_Top_Performance",
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org%s", task_key=ndb.Key(Task, "Leichtathletik_Top_Urls"), selector_name="url")],
+                selectors=[
+                    Selector(name="athlete_id", xpath="""(//table)[1]//tr[.//a]//@href""", type=int, is_key=True),
+                    Selector(name="first_name", xpath="""(//table)[1]//tr[.//a]/td/a/text()""", type=unicode),
+                    Selector(name="last_name", xpath="""(//table)[1]//tr[.//a]/td/a/span/text()""", type=unicode),
+                    Selector(name="performance", xpath="""(//table)[1]//tr[.//a]/td[2]/text()""", type=float),
+                    Selector(name="datetime", xpath="""(//table)[1]//tr[.//a]/td[last()]/text()""", type=datetime, is_key=True),
+                    Selector(name="gender", xpath="""//meta[@property="og:url"]/@content""", xpath=".+/([^/]+)/", type=unicode),
+                    Selector(name="class", xpath="""//meta[@property="og:url"]/@content""", xpath=".+/([^/]+)", type=unicode),
+                    Selector(name="discipline", xpath="""//meta[@property="og:url"]/@content""", type=unicode, xpath=".+/([^/]+)/[^/]+/[^/]+/[^/]+", is_key=True),
+                ],
+            ),
+            Task(
+                name="Leichtathletik_Top_Urls",
+                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", task_key=ndb.Key(Task, "Leichtathletik_Top_Urls"))],
+                selectors=[
+                    Selector(name="url", xpath="""//input[@type="radio"]/@value""", type=unicode, is_key=True),
                 ],
             ),
 
