@@ -104,3 +104,8 @@ def injuries_in_action():
     ndb.put_multi(injuries)
     injuries = ndb.get_multi(injury_keys)
     return BEAUTIFY(injuries)
+
+def top_performance():
+    limit = int(request.vars.limit) if request.vars.limit else None
+    offset = int(request.vars.offset) if request.vars.offset else None
+    return TABLE(list(Task.get("Leichtathletik_Top_Performance").get_results_as_table(query_options=Query_Options(limit=limit, offset=offset))))

@@ -8,6 +8,8 @@ version: 1
 
 module: back
 instance_class: B8
+#manual_scaling:
+#  instances: 1
 basic_scaling:
   max_instances: 1
   idle_timeout: 10m

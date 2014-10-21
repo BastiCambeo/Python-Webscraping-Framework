@@ -117,7 +117,7 @@ class Task(ndb.Model):
 
     def get_results(self, query_options=None):
         query_options = query_options or Query_Options()
-        return Result.query(Result.task_key == self.key).fetch(limit=query_options.limit, keys_only=query_options.keys_only)
+        return Result.query(Result.task_key == self.key).fetch(limit=query_options.limit, keys_only=query_options.keys_only, offset=query_options.offset)
 
     def get_results_as_table(self, query_options=None):
         results = self.get_results(query_options=query_options)
