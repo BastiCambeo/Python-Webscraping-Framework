@@ -73,6 +73,9 @@ def str2datetime(string):
 
     >>> str2datetime("25 AUG 2012")
     datetime.datetime(2012, 8, 25, 0, 0)
+
+    >>> str2datetime("18 APR 1973")
+    datetime.datetime(1973, 4, 18, 0, 0)
     """
     import feedparser, datetime
     from datetime import datetime
