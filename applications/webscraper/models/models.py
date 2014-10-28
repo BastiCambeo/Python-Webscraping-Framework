@@ -158,6 +158,17 @@ class Task(ndb.Model):
     def test(self):
         return self.run(url=next(self.get_urls(Query_Options(limit=1))), store=False)
 
+    def export(self):
+        url_selectors = "[%s\n    ]" % ",".join(["""\n      UrlSelector(url_raw="%s", task_key=ndb.%s, selector_name="%s", start_parameter="%s")""" % (url_selector.url_raw, repr(url_selector.task_key), url_selector.selector_name, url_selector.start_parameter) for url_selector in self.url_selectors])
+
+        selectors = "[%s\n    ]" % ",".join(["""\n      Selector(name="%s", is_key=%s, xpath='''%s''', type=%s, regex="%s")""" % (selector.name, selector.is_key, selector.xpath, Selector.TYPE_REAL_STR[selector.type], selector.regex) for selector in self.selectors])
+
+        return """Task(
+    name="%s",
+    url_selectors=%s,
+    selectors=%s
+)""" % (self.name, url_selectors, selectors)
+
     def export_to_excel(self):
         return Task.export_data_to_excel(data=self.get_results_as_table())
 
@@ -316,17 +327,36 @@ class Task(ndb.Model):
             ),
             Task(
                 name="Leichtathletik_Top_Performance",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org%s", task_key=ndb.Key(Task, "Leichtathletik_Top_Urls"), selector_name="url")],
-                selectors=[
-                    Selector(name="athlete_id", xpath="""(//table)[1]//tr[.//a]//@href""", type=int, is_key=True),
-                    Selector(name="first_name", xpath="""(//table)[1]//tr[.//a]/td/a/text()""", type=unicode),
-                    Selector(name="last_name", xpath="""(//table)[1]//tr[.//a]/td/a/span/text()""", type=unicode),
-                    Selector(name="performance", xpath="""(//table)[1]//tr[.//a]/td[2]/text()""", type=float),
-                    Selector(name="datetime", xpath="""(//table)[1]//tr[.//a]/td[last()]/text()""", type=datetime, is_key=True),
-                    Selector(name="gender", xpath="""//meta[@property="og:url"]/@content""", regex=".+/([^/]+)/", type=unicode),
-                    Selector(name="class", xpath="""//meta[@property="og:url"]/@content""", regex=".+/([^/]+)", type=unicode),
-                    Selector(name="discipline", xpath="""//meta[@property="og:url"]/@content""", type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+", is_key=True),
+                url_selectors=[
+                  UrlSelector(url_raw="http://www.iaaf.org%s/1999", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2000", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2001", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2002", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2003", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2004", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2005", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2006", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2007", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2008", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2009", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2010", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2011", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2012", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2013", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
+                  UrlSelector(url_raw="http://www.iaaf.org%s/2014", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter="")
                 ],
+                selectors=[
+                  Selector(name="athlete_id", is_key=True, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]//@href''', type=int, regex="\d[\d.,]*"),
+                  Selector(name="first_name", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/a/text()''', type=unicode, regex="[^\n\r ,.][^\n\r]+"),
+                  Selector(name="last_name", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/a/span/text()''', type=unicode, regex="[^\n\r ,.][^\n\r]+"),
+                  Selector(name="performance", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[2]/text()''', type=float, regex="\d[\d.,:]*"),
+                  Selector(name="datetime", is_key=True, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[last()]/text()''', type=datetime, regex="[^\n\r ,.][^\n\r]+"),
+                  Selector(name="gender", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+"),
+                  Selector(name="class", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+"),
+                  Selector(name="discpiplin", is_key=True, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+/[^/]+"),
+                  Selector(name="birthday", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[preceding-sibling::*[.//a]]/text()''', type=datetime, regex="[^\n\r ,.][^\n\r]+"),
+                  Selector(name="nation", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/img/@alt''', type=unicode, regex="[^\n\r ,.][^\n\r]+")
+                ]
             ),
             Task(
                 name="Leichtathletik_Top_Urls",
