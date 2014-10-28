@@ -22,6 +22,13 @@ class Selector(ndb.Model):
         float: "float value",
         datetime: "date or time"
     }
+    TYPE_REAL_STR = {
+        str: "str",
+        unicode: "unicode",
+        int: "int",
+        float: "float",
+        datetime: "datetime"
+    }
 
     is_key = ndb.BooleanProperty(default=False)
     name = ndb.StringProperty(default="")

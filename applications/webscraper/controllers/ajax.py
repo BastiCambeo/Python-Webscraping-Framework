@@ -33,6 +33,12 @@ def export_excel():
     response.headers["Content-Type"] = "application/vnd.ms-excel"
     return task.export_to_excel()
 
+def export_task():
+    name = request.vars.name
+    task = Task.get(name)
+    response.headers["Content-Type"] = "text/plain"
+    return task.export()
+
 def delete_task():
     Task.get(request.vars.name).delete()
 
