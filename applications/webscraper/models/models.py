@@ -129,17 +129,21 @@ class Task(ndb.Model):
         schedule_id = schedule_id or str(int(time.time()))
 
         urls = set(urls) if urls is not None else set(self.get_urls())
+        tasks = []
 
-        for url in urls:
-            while True:  # try until success
-                try:
-                    taskqueue.add(url="/webscraper/taskqueue/run_task", params=dict(schedule_id=schedule_id, url=url, name=self.key.id()), name=schedule_id+str(hash(url)), queue_name="task", target="1.default")
-                    break
-                except (taskqueue.DuplicateTaskNameError, taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError):
-                    logging.warning("%s already scheduled" % url)  # only schedule any url once per schedule
-                except Exception as e:
-                    logging.error("Unexptected scheduling exception. Continue nevertheless: " + e.message)
-                    time.sleep(1)
+        while len(urls) > 0 or len(tasks) > 0:  # try until success
+            ## fill tasks up to 100 new tasks ##
+            for i in range(100-len(tasks)):
+                url = urls.pop()
+                tasks.append(taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(schedule_id=schedule_id, url=url, name=self.key.id()), name=schedule_id+str(hash(url)), target="1.default"))
+            try:
+                Task.QUEUE.add(tasks)
+            except (taskqueue.DuplicateTaskNameError, taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError):
+                logging.warning("%s already scheduled" % url)  # only schedule any url once per schedule
+            except Exception as e:
+                logging.error("Unexptected scheduling exception. Continue nevertheless: " + e.message)
+                time.sleep(1)
+            tasks = [task for task in tasks if not task.was_enqueued]
 
     def run(self, url, schedule_id=None, store=True):
         ## Fetch Result ##
@@ -278,7 +282,8 @@ class Task(ndb.Model):
                     UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2014", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
                 ],
                 selectors=[
-                    Selector(name="einsatz_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //div[@class="responsive-table"]/table//tr[@class=""]/td[2])""", type=unicode, is_key=True),
+                    Selector(name="einsatz_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //div[@class="responsive-table"]/table//tr/td[2])""", type=unicode, is_key=True),
+                    Selector(name="minutes",         xpath="""//div[@class="responsive-table"]/table//tr/td[2]/following-sibling::*[last()]""", type=int)
                     # for "Verletzungsbedingte Wechsel": //div[@class="responsive-table"]/table//tr[contains(td[16]//@title, "Verletzungsbedingter Wechsel")]/td[2]
                 ],
             ),
