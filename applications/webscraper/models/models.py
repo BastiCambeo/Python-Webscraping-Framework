@@ -5,7 +5,7 @@ import itertools  # helpers for iterable objects
 from gluon.storage import Storage  # Support for dictionary container Storage
 from Scraper import Scraper, Selector  # Own Web-Scraper
 from util import *  # for generic helpers
-from google.appengine.api import taskqueue, memcache  # Support for scheduled, cronjob-like tasks and memcache
+from google.appengine.api import taskqueue, memcache, app_identity  # Support for scheduled, cronjob-like tasks and memcache
 from google.appengine.ext import ndb  # Database support
 patch_ndb()
 

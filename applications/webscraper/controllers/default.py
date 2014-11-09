@@ -109,3 +109,33 @@ def top_performance():
     limit = int(request.vars.limit) if request.vars.limit else None
     offset = int(request.vars.offset) if request.vars.offset else None
     return TABLE(list(Task.get("Leichtathletik_Top_Performance").get_results_as_table(query_options=Query_Options(limit=limit, offset=offset))))
+
+def test():
+    """ https://cloud.google.com/appengine/docs/python/googlecloudstorageclient/getstarted """
+    import cloudstorage as gcs
+    bucket_name = app_identity.get_default_gcs_bucket_name()
+    object_name = "demo_testfile2"
+    bucket = '/' + bucket_name
+    filename = bucket + '/' + object_name
+
+    try:
+        gcs.delete(filename)
+    except Exception as e:
+        pass
+
+    write_retry_params = gcs.RetryParams(backoff_factor=1.1)
+    gcs_file = gcs.open(filename,
+                        'w',
+                        content_type='text/plain',
+                        options={
+                                'x-goog-acl': 'public-read',
+                                 'x-goog-meta-foo': 'foo',
+                                 'x-goog-meta-bar': 'bar'},
+                        retry_params=write_retry_params)
+    a = ""
+    for i in xrange(10000000):
+        a += `i`
+    gcs_file.write(a)
+    gcs_file.close()
+
+    redirect("https://storage.googleapis.com/%s/%s" % (bucket_name, object_name))
