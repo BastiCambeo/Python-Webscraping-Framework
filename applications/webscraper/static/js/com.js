@@ -32,6 +32,33 @@ function run(name) {
     });
 }
 
+var cursor="", has_next=true;
+function load_data(name, limit, load_all) {
+    data = {name: name, cursor:cursor}
+
+    if (typeof limit !== "undefined") {
+        data["limit"] = limit;
+    }
+    if (typeof load_all === "undefined") {
+        load_all = false;
+    }
+
+    if (!has_next) return;
+
+    $.ajax({
+        type: "POST",
+        url: "/webscraper/ajax/get_data",
+        data: data,
+        dataType: "json",
+        success: function (data) {
+            cursor = data.cursor;
+            has_next = data.has_next;
+            $("#data").append(data.results);
+            if (load_all) load_data(name, limit, load_all);
+        }
+    });
+}
+
 function test(name) {
     save(false);
     $.ajax({

@@ -6,7 +6,7 @@ from gluon.storage import Storage  # Support for dictionary container Storage
 from Scraper import Scraper, Selector  # Own Web-Scraper
 from util import *  # for generic helpers
 from google.appengine.api import taskqueue, memcache, app_identity  # Support for scheduled, cronjob-like tasks and memcache
-from google.appengine.ext import ndb  # Database support
+from google.appengine.ext import ndb, db  # Database support
 patch_ndb()
 
 class Result(ndb.Expando):
@@ -116,12 +116,65 @@ class Task(ndb.Model):
             taskqueue.add(url="/webscraper/taskqueue/delete_results", params=dict(cursor=next_curs.urlsafe()))
 
     def get_results(self, query_options=None):
-        query_options = query_options or Query_Options()
-        return Result.query(Result.task_key == self.key).fetch(limit=query_options.limit, keys_only=query_options.keys_only, offset=query_options.offset)
+        # query_options = query_options or Query_Options()
+        #
+        # class Result(db.Expando):
+        #
+        #     def to_ndb_key(self):
+        #         return ndb.Key.from_old_key(self.key())
+        #
+        # max_page_size = 1000
+        # cursor = query_options.cursor
+        #
+        # while True:
+        #     if query_options.limit is None or query_options.limit > max_page_size:
+        #         fetch_limit = max_page_size
+        #     else:
+        #         fetch_limit = min(query_options.limit, max_page_size)
+        #
+        #     if not fetch_limit:
+        #         break
+        #
+        #     query = Result.all(keys_only=True).filter("task_key =", db.Key(self.key.urlsafe())).with_cursor(start_cursor=cursor)
+        #     entities = ndb.get_multi([ndb.Key.from_old_key(key) for key in query.run(limit=fetch_limit, offset=query_options.offset)])
+        #     cursor = query.cursor()
+        #     query_options.offset = None
+        #
+        #     if query_options.limit:
+        #         query_options.limit -= fetch_limit
+        #
+        #     for entity in entities:
+        #         yield entity
+        #
+        #     if not entities:
+        #         break
+
+        max_page_size = 1000
+
+        if query_options.limit is None or query_options.limit > max_page_size:
+            fetch_limit = max_page_size
+        else:
+            fetch_limit = min(query_options.limit, max_page_size)
+
+        if fetch_limit:
+            query_options.entities, query_options.cursor, query_options.has_next = Result.query(Result.task_key == self.key).fetch_page(fetch_limit, keys_only=query_options.keys_only, offset=query_options.offset, start_cursor=query_options.cursor)
+            query_options.offset = None
+            if query_options.limit:
+                query_options.limit -= fetch_limit
+
+            for entity in query_options.entities:
+                yield entity
+
+            if query_options.has_next:
+                for entity in self.get_results(query_options=query_options):
+                    yield entity
 
     def get_results_as_table(self, query_options=None):
+        if not query_options.offset and not query_options.cursor:
+            yield tuple(selector.name for selector in self.selectors)
+
         results = self.get_results(query_options=query_options)
-        yield tuple(selector.name for selector in self.selectors)
+
         for result in results:
             yield tuple(getattr(result, selector.name) if hasattr(result, selector.name) else None for selector in self.selectors)
 
@@ -196,6 +249,46 @@ class Task(ndb.Model):
         f.seek(0)
         logging.info("excel file size: %s" % f.__sizeof__())
         return f.read()
+
+    def export_to_gcs(self):
+        """ Creates a file for this task, puts the task's data into the a virtual file. Finally the public url to google cloud storage is returned """
+
+        import cloudstorage as gcs
+        bucket_name = app_identity.get_default_gcs_bucket_name()
+        object_name = self.name + ".txt"
+        bucket = '/' + bucket_name
+        filename = bucket + '/' + object_name
+
+        try:
+            gcs.delete(filename)
+        except Exception as e:
+            pass  # File might not exist in the first place
+
+        gcs_file = gcs.open(
+            filename,
+            mode='w',
+            content_type='text/plain',
+            options={'x-goog-acl': 'public-read'},
+            retry_params=gcs.RetryParams(backoff_factor=1.1)
+        )
+
+        ## Write actual content ##
+        results = self.get_results_as_table()
+        while True:
+            result_slice = list(itertools.islice(results, 0, 1000))  # take a slice of 1000 results and write it to file
+            if not result_slice:
+                break
+            gcs_file.write(s("\n".join("\t".join([unicode(value) for value in result]) for result in result_slice)))  # aparently only supports only str, not unicode
+        gcs_file.close()
+
+
+        return self.get_gcs_link()
+
+    def get_gcs_link(self):
+        object_name = self.name + ".txt"
+        bucket_name = app_identity.get_default_gcs_bucket_name()
+        return "https://storage.googleapis.com/%s/%s" % (bucket_name, object_name)
+
 
     @staticmethod
     def example_tasks():

@@ -33,6 +33,32 @@ def export_excel():
     response.headers["Content-Type"] = "application/vnd.ms-excel"
     return task.export_to_excel()
 
+def export_gcs():
+    name = request.vars.name
+    task = Task.get(name)
+    redirect(task.export_to_gcs())
+
+def get_data():
+    name = request.vars.name
+    task = Task.get(name)
+    query_options = Query_Options()
+
+    if request.vars.limit:
+        query_options.limit = int(request.vars.limit)
+    if request.vars.cursor:
+        query_options.cursor = ndb.Cursor(urlsafe=request.vars.cursor)
+    elif request.vars.offset:
+        query_options.offset = int(request.vars.offset)
+
+    results = task.get_results_as_table(query_options=query_options)
+    results = "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % value for value in row) for row in results)
+    return json.dumps(dict(results=results, cursor=query_options.cursor.urlsafe() if query_options.cursor else "", has_next=query_options.has_next))
+
+def get_gcs_data():
+    name = request.vars.name
+    task = Task.get(name)
+    redirect(task.get_gcs_link())
+
 def export_task():
     name = request.vars.name
     task = Task.get(name)
