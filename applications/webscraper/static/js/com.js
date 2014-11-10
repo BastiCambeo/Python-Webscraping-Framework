@@ -43,7 +43,10 @@ function load_data(name, limit, load_all) {
         load_all = false;
     }
 
-    if (!has_next) return;
+    if (!has_next) {
+        $.web2py.flash("All data sucessfully loaded");
+        return;
+    }
 
     $.ajax({
         type: "POST",
