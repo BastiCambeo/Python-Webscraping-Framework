@@ -57,11 +57,6 @@
         <button type="button" class="btn" onclick="remove_content_selector()">-</button>
         <button type="button" class="btn" onclick="add_content_selector()">+</button>
     </div>
-
-    <!--<div class="advanced">
-        <h3>Scheduler Interval</h3>
-        <input type="text" name="period" value="{{=task.period}}" class="input_short"> Seconds (0:= Disabled)
-    </div>-->
 </form>
 
 <!-- Options -->
@@ -70,15 +65,14 @@
 <button class="btn btn-success" onclick="run('{{=task.name}}')">Run</button>
 <button class="btn btn-danger advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
 <button class="btn btn-danger advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
-<button class="btn" onclick="load_data('{{=task.name}}', 1000, true)">Show All Data</button>
+<button class="btn" onclick="load_data('{{=task.name}}', 1000, true)">Download All Data</button>
 <button class="btn advanced" onclick='window.location ="{{=url('ajax', 'export_task.txt', vars={'name': task.name})}}"'>Export Task</button>
 <button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
 
-<table id="data" border></table>
+{{TABLE(data)}}
 
 <script>
     $(function() {
         swap_advanced();swap_advanced();  // set current view
     })
-    load_data('{{=task.name}}', 10);
 </script>

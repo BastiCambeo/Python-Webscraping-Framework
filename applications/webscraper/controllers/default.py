@@ -56,7 +56,8 @@ def call():
 def task():
     task = Task.get(request.vars.name)
     response.title = task.name
-    return dict(task=task)
+    data = task.get_results_as_table(Query_Options(limit=50))
+    return dict(task=task, data=data)
 
 @auth.requires_login()
 def console():

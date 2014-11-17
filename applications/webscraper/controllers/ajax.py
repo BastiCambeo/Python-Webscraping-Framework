@@ -51,7 +51,8 @@ def get_data():
         query_options.offset = int(request.vars.offset)
 
     results = task.get_results_as_table(query_options=query_options)
-    results = "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % value for value in row) for row in results)
+    # results = "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % value for value in row) for row in results)
+    results = "\n".join("\t".join("%s" % value for value in row) for row in results) + "\n"
     return json.dumps(dict(results=results, cursor=query_options.cursor.urlsafe() if query_options.cursor else "", has_next=query_options.has_next))
 
 def get_gcs_data():
@@ -77,7 +78,6 @@ def new_task():
 def save_task():
     """ Takes the post request from the task form and saves the values to the task """
     task = Task.get(request.vars.task_name)
-    task.period = int(request.vars.period)
     task.url_selectors = [UrlSelector(
                             url_raw=request.vars.getlist("url_raw[]")[i],
                             task_key=ndb.Key(Task, request.vars.getlist("url_results_id[]")[i]),

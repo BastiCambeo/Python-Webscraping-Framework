@@ -11,6 +11,7 @@ patch_ndb()
 
 class Result(ndb.Expando):
     """ Holds results of webscraping executions """
+    _default_indexed = False
     task_key = ndb.KeyProperty(kind="Task")
 
 
@@ -55,7 +56,6 @@ class Task(ndb.Model):
     """ A Webscraper Task """
 
     # self.key.id() := name of the tasks
-    period = ndb.IntegerProperty(default=0)  # seconds between scheduled runs [if set]
     creation_datetime = ndb.DateTimeProperty(required=True, auto_now_add=True)
     url_selectors = ndb.StructuredProperty(UrlSelector, repeated=True)  # Urls that should be crawled in this task. Can be fetched from the result of other tasks
     selectors = ndb.StructuredProperty(Selector, repeated=True)  # Selector of webpage content
@@ -116,8 +116,7 @@ class Task(ndb.Model):
             taskqueue.add(url="/webscraper/taskqueue/delete_results", params=dict(cursor=next_curs.urlsafe()))
 
     def get_results(self, query_options=None):
-        # query_options = query_options or Query_Options()
-        #
+        query_options = query_options or Query_Options()
         # class Result(db.Expando):
         #
         #     def to_ndb_key(self):
@@ -453,7 +452,9 @@ class Task(ndb.Model):
                   Selector(name="class", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+"),
                   Selector(name="discpiplin", is_key=True, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+/[^/]+"),
                   Selector(name="birthday", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[preceding-sibling::td[position()=1 and ./a]]''', type=datetime, regex="[^\n\r ,.][^\n\r]+"),
-                  Selector(name="nation", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/img/@alt''', type=unicode, regex="[^\n\r ,.][^\n\r]+")
+                  Selector(name="nation", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/img/@alt''', type=unicode, regex="[^\n\r ,.][^\n\r]+"),
+                  Selector(name="area", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+"),
+                  Selector(name="rank", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[1]''', type=int, regex="\d[\d.,]*")
                 ]
             ),
             Task(

@@ -32,7 +32,7 @@ function run(name) {
     });
 }
 
-var cursor="", has_next=true;
+var cursor="", has_next=true, data_blobs=[];
 function load_data(name, limit, load_all) {
     data = {name: name, cursor:cursor}
 
@@ -44,6 +44,7 @@ function load_data(name, limit, load_all) {
     }
 
     if (!has_next) {
+        saveAs(new Blob(data_blobs), "data.txt");
         $.web2py.flash("All data sucessfully loaded");
         return;
     }
@@ -56,7 +57,8 @@ function load_data(name, limit, load_all) {
         success: function (data) {
             cursor = data.cursor;
             has_next = data.has_next;
-            $("#data").append(data.results);
+            $.web2py.flash("Data is being prepared. This can take some time depending on the size of the database.");
+            data_blobs.push(data.results);
             if (load_all) load_data(name, limit, load_all);
         }
     });
