@@ -7,7 +7,7 @@ application: cambeotrunk
 version: 1
 
 #module: back
-#instance_class: B8
+#instance_class: B2
 #basic_scaling:
 #  max_instances: 1
 #  idle_timeout: 10m

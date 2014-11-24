@@ -180,12 +180,11 @@ def patch_ndb():
     attr_replace(ndb.Key, "get_async", key_get_async)
 
 class Query_Options(object):
-    def __init__(self, keys_only=None, projection=None, limit=None, offset=None, start_cursor=None, cursor=None, hast_next=None, entities=None):
+    def __init__(self, keys_only=None, projection=None, limit=None, offset=None, cursor=None, hast_next=None, entities=None):
         self.keys_only = keys_only
         self.projection = projection
         self.limit = limit
         self.offset = offset
-        self.start_cursor = start_cursor
 
         ## Will usually be set after query has executed ##
         self.cursor = cursor

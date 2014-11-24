@@ -95,20 +95,11 @@ class Task(ndb.Model):
         self.delete_results()
         self.key.delete()
 
-    def delete_results(self):
-        result_keys = self.get_results(Query_Options(keys_only=True))
-        while True:
-            tmp = list(itertools.islice(result_keys, 0, 1000))
-            if not tmp:
-                return
-            ndb.delete_multi(tmp)
-
-    @staticmethod
-    def delete_all_results(cursor=None):
-        result_keys, next_curs, more = Result.query().fetch_page(1000, start_cursor=cursor, keys_only=True)
-        ndb.delete_multi(result_keys)
-        if more and next_curs:
-            taskqueue.add(url="/webscraper/taskqueue/delete_results", params=dict(cursor=next_curs.urlsafe()))
+    def delete_results(self, cursor=None):
+        query_options = Query_Options(keys_only=True, limit=1000, cursor=cursor)
+        ndb.delete_multi(self.get_results(query_options=query_options))
+        if query_options.has_next and query_options.cursor:
+            taskqueue.add(url="/webscraper/taskqueue/delete_results", params=dict(name=self.name, cursor=query_options.cursor.urlsafe()))
 
     def get_results(self, query_options=None):
         query_options = query_options or Query_Options()

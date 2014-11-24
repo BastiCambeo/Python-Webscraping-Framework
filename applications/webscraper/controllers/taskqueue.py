@@ -12,7 +12,8 @@ def run_task():
 
 @gae_taskqueue
 def delete_results():
+    task = ndb.Key(Task, request.vars.name).get()
     cursor = ndb.Cursor.from_websafe_string(request.vars.cursor) if request.vars.cursor else None
-    Task.delete_all_results(cursor=cursor)
+    task.delete_results(cursor=cursor)
 
 session.forget()
