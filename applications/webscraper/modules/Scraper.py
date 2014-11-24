@@ -138,8 +138,8 @@ class Scraper(object):
 
         ## convert selector results from a tuple of lists to a list of tuples ##
         result = []
-        key_selector = next((selector for selector in selectors if selector.is_key), selectors[0])
-        for y in range(len(selectors_results[selectors.index(key_selector)])):  # Take as many results, as there are results for the key selector
+        key_selectors = [selector for selector in selectors if selector.is_key]
+        for y in range(max([len(selectors_results[selectors.index(key_selector)]) for key_selector in key_selectors])):  # Take as many results, as there are results for a key selector
             row = Storage()
             for x, selector in enumerate(selectors):
                 if not selectors_results[x]: selectors_results[x] = [None]  # Guarantee that an element is there

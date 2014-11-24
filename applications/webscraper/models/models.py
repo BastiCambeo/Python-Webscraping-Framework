@@ -21,31 +21,22 @@ class UrlSelector(ndb.Model):
     url_raw = ndb.StringProperty(default="")
     task_key = ndb.KeyProperty(kind="Task", required=True)
     selector_name = ndb.StringProperty(default="")
-    start_parameter = ndb.StringProperty(default="")
-
-    @property
-    def selector(self):
-        return self.task_key.get().get_selector(self.selector_name)
+    selector_name2 = ndb.StringProperty(default="")
 
     def get_urls(self, query_options=None):
         """ Retrieves the urls of an URL Selector (based a result table if the url is dynamic) """
+
         if self.has_dynamic_url:
-
-            if self.start_parameter:
-                yield self.url_raw % self.start_parameter
-
-
-            for url_parameter in self.get_url_parameters(query_options=query_options):
-                yield self.url_raw % url_parameter
-
+            for url_parameters in self.get_url_parameters(query_options=query_options):
+                yield self.url_raw % tuple(url_parameters[0: self.url_raw.count("%s")])
         else:
             yield self.url_raw
 
     def get_url_parameters(self, query_options=None):
         query_options = query_options or Query_Options()
         for result in query_options.entities or self.task_key.get().get_results():
-            if getattr(result, self.selector_name) is not None:
-                yield getattr(result, self.selector_name)
+            if getattr(result, self.selector_name) is not None and getattr(result, self.selector_name2) is not None:
+                yield [getattr(result, self.selector_name), getattr(result, self.selector_name2)]
 
     @property
     def has_dynamic_url(self):
@@ -96,8 +87,8 @@ class Task(ndb.Model):
         return ndb.Key(Task, name).get()
 
     def get_result_key(self, result_value_dict):
-        result_id = u" ".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors if result_value_dict[selector.name]])  # Assemble Result_key from key selectors
-        if result_id:
+        if all([result_value_dict[selector.name] for selector in self.key_selectors]):
+            result_id = u" ".join([unicode(result_value_dict[selector.name]) for selector in self.key_selectors])  # Assemble Result_key from key selectors
             return ndb.Key(Result, self.name + result_id)
 
     def delete(self):
@@ -105,8 +96,12 @@ class Task(ndb.Model):
         self.key.delete()
 
     def delete_results(self):
-        ndb.delete_multi(self.get_results(Query_Options(keys_only=True)))
-        Task.QUEUE.purge()
+        result_keys = self.get_results(Query_Options(keys_only=True))
+        while True:
+            tmp = list(itertools.islice(result_keys, 0, 1000))
+            if not tmp:
+                return
+            ndb.delete_multi(tmp)
 
     @staticmethod
     def delete_all_results(cursor=None):
@@ -117,36 +112,6 @@ class Task(ndb.Model):
 
     def get_results(self, query_options=None):
         query_options = query_options or Query_Options()
-        # class Result(db.Expando):
-        #
-        #     def to_ndb_key(self):
-        #         return ndb.Key.from_old_key(self.key())
-        #
-        # max_page_size = 1000
-        # cursor = query_options.cursor
-        #
-        # while True:
-        #     if query_options.limit is None or query_options.limit > max_page_size:
-        #         fetch_limit = max_page_size
-        #     else:
-        #         fetch_limit = min(query_options.limit, max_page_size)
-        #
-        #     if not fetch_limit:
-        #         break
-        #
-        #     query = Result.all(keys_only=True).filter("task_key =", db.Key(self.key.urlsafe())).with_cursor(start_cursor=cursor)
-        #     entities = ndb.get_multi([ndb.Key.from_old_key(key) for key in query.run(limit=fetch_limit, offset=query_options.offset)])
-        #     cursor = query.cursor()
-        #     query_options.offset = None
-        #
-        #     if query_options.limit:
-        #         query_options.limit -= fetch_limit
-        #
-        #     for entity in entities:
-        #         yield entity
-        #
-        #     if not entities:
-        #         break
 
         max_page_size = 1000
 
@@ -185,13 +150,15 @@ class Task(ndb.Model):
 
         while len(urls) > 0 or len(tasks) > 0:  # try until success
             ## fill tasks up to 100 new tasks ##
-            for i in range(100-len(tasks)):
+            for i in range(min(100, len(urls))-len(tasks)):
                 url = urls.pop()
                 tasks.append(taskqueue.Task(url="/webscraper/taskqueue/run_task", params=dict(schedule_id=schedule_id, url=url, name=self.key.id()), name=schedule_id+str(hash(url)), target="1.default"))
             try:
                 Task.QUEUE.add(tasks)
             except (taskqueue.DuplicateTaskNameError, taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError):
                 logging.warning("%s already scheduled" % url)  # only schedule any url once per schedule
+                tasks = [task for task in tasks if not task.was_enqueued][1:]  # remove the first task that was not successful
+                continue
             except Exception as e:
                 logging.error("Unexptected scheduling exception. Continue nevertheless: " + e.message)
                 time.sleep(1)
@@ -215,9 +182,9 @@ class Task(ndb.Model):
         return self.run(url=next(self.get_urls(Query_Options(limit=1))), store=False)
 
     def export(self):
-        url_selectors = "[%s\n    ]" % ",".join(["""\n      UrlSelector(url_raw="%s", task_key=ndb.%s, selector_name="%s", start_parameter="%s")""" % (url_selector.url_raw, repr(url_selector.task_key), url_selector.selector_name, url_selector.start_parameter) for url_selector in self.url_selectors])
+        url_selectors = "[%s\n    ]" % ",".join(["""\n      UrlSelector(url_raw="%s", task_key=ndb.%s, selector_name="%s", selector_name2="%s")""" % (url_selector.url_raw, repr(url_selector.task_key), url_selector.selector_name, url_selector.selector_name2) for url_selector in self.url_selectors])
 
-        selectors = "[%s\n    ]" % ",".join(["""\n      Selector(name="%s", is_key=%s, xpath='''%s''', type=%s, regex="%s")""" % (selector.name, selector.is_key, selector.xpath, Selector.TYPE_REAL_STR[selector.type], selector.regex) for selector in self.selectors])
+        selectors = "[%s\n    ]" % ",".join(["""\n      Selector(name="%s", is_key=%s, xpath='''%s''', type=%s, regex="%s")""" % (selector.name, selector.is_key, selector.xpath, Selector.TYPE_REAL_STR[selector.type], selector.regex.replace("\\", "\\\\")) for selector in self.selectors])
 
         return """Task(
     name="%s",
@@ -292,200 +259,206 @@ class Task(ndb.Model):
     @staticmethod
     def example_tasks():
         return [
-            ##### Fußball #####
-            Task(
-                name="Fussball_Saisons",
-                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/3262/kader/verein/3262/", task_key=ndb.Key(Task, "Fussball_Saisons"))],
-                selectors=[
-                    Selector(name="saison",         xpath="""//select[@name="saison_id"]/option/@value""", type=int, regex=r"20[^\n\r ,.][^\n\r]+", is_key=True),
-                ],
-            ),
-            Task(
-                name="Fussball_Spieler",
-                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/%s", task_key=ndb.Key(Task, "Fussball_Vereine"), selector_name="verein_url")],
-                selectors=[
-                    Selector(name="spieler_id",     xpath="""//a[@class="spielprofil_tooltip"]/@href""", type=int, is_key=True),
-                ],
-            ),
-            Task(
-                name="Fussball_Spieler_Details",
-                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id")],
-                selectors=[
-                    Selector(name="spieler_id",     xpath="""//link[@rel="canonical"]/@href""", type=int, is_key=True),
-                    Selector(name="name",     xpath="""//div[@class="spielername-profil"]/text()""", type=unicode),
-                    Selector(name="position",     xpath="""//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]""", type=unicode),
-                    Selector(name="max_value",     xpath="""//table[@class="auflistung mt10"]/tr[3]/td/text()""", type=float),
-                    Selector(name="birthday",     xpath="""//td[preceding-sibling::th/text()="Geburtsdatum:"]/a/text()""", type=datetime),
-                    Selector(name="size",     xpath="""//td[preceding-sibling::th/text()="Größe:"]//text()""", type=float),
-                ],
-            ),
-            Task(
-                name="Fussball_Transfers",
-                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id")],
-                selectors=[
-                    Selector(name="spieler_id",     xpath="""(//a[@class="megamenu"])[1]/@href""", type=int),
-                    Selector(name="date",     xpath="""(//table)[3]//tr/td[2]//text()""", type=datetime),
-                    Selector(name="from",     xpath="""(//table)[3]//tr/td[5]/a/text()""", type=unicode),
-                    Selector(name="to",     xpath="""(//table)[3]//tr/td[8]/a/text()""", type=unicode),
-                    Selector(name="transfer_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())""", type=unicode, is_key=True),
-                ],
-            ),
-            Task(
-                name="Fussball_Vereine",
-                url_selectors=[UrlSelector(url_raw="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", task_key=ndb.Key(Task, "Fussball_Saisons"), selector_name="saison")],
-                selectors=[
-                    Selector(name="verein_url",     xpath="""//table[@class='items']//tr/td[@class='hauptlink no-border-links']/a[1]/@href""", type=unicode, is_key=True),
-                ],
-            ),
-            Task(
-                name="Fussball_Verletzungen",
-                url_selectors=[
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/verletzungen/spieler/%s", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de%s", task_key=ndb.Key(Task, "Fussball_Verletzungen"), selector_name="next_page")],
-                selectors=[
-                    Selector(name="spieler_id",     xpath="""(//a[@class="megamenu"])[1]/@href""", type=int),
-                    Selector(name="injury",     xpath="""//table[@class="items"]//tr/td[2]/text()""", type=unicode),
-                    Selector(name="from",     xpath="""//table[@class="items"]//tr/td[3]/text()""", type=datetime),
-                    Selector(name="to",     xpath="""//table[@class="items"]//tr/td[4]/text()""", type=datetime),
-                    Selector(name="duration",     xpath="""//table[@class="items"]//tr/td[5]/text()""", type=int),
-                    Selector(name="missed_games",     xpath="""//table[@class="items"]//tr/td[6]/text()""", type=int),
-                    Selector(name="injury_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //table[@class="items"]//tr/td[3]/text())""", type=unicode, is_key=True),
-                    Selector(name="next_page",     xpath="""//li[@class="naechste-seite"]/a/@href""", type=unicode),
-                    Selector(name="club",     xpath="""exe(//table[@class="items"]//tr/td[6],".//@title")""", type=unicode),
-                ],
-            ),
-            Task(
-                name="Fussball_Einsaetze",
-                url_selectors=[
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2000", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2001", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2002", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2003", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2004", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2005", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2006", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2007", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2008", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2009", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2010", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2011", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2012", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2013", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                    UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/2014", task_key=ndb.Key(Task, "Fussball_Spieler"), selector_name="spieler_id"),
-                ],
-                selectors=[
-                    Selector(name="einsatz_key",     xpath="""merge_lists((//a[@class="megamenu"])[1]/@href, //div[@class="responsive-table"]/table//tr/td[2])""", type=unicode, is_key=True),
-                    Selector(name="minutes",         xpath="""//div[@class="responsive-table"]/table//tr/td[2]/following-sibling::*[last()]""", type=int)
-                    # for "Verletzungsbedingte Wechsel": //div[@class="responsive-table"]/table//tr[contains(td[16]//@title, "Verletzungsbedingter Wechsel")]/td[2]
-                ],
-            ),
-            ##### Leichtathletik #####
-            Task(
-                name="Leichtathletik_Sprint_100m_Herren",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", task_key=ndb.Key(Task, "Leichtathletik_Sprint_100m_Herren"))],
-                selectors=[
-                    Selector(name="athlete_id",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/@href", type=int, is_key=True),
-                    Selector(name="first_name",         xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/text()", type=unicode),
-                    Selector(name="last_name",          xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[4]/a/span/text()", type=unicode),
-                    Selector(name="result_time",        xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[2]/text()", type=float),
-                    Selector(name="competition_date",   xpath="""//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]""" + "/td[9]/text()", type=datetime),
-                ],
-            ),
-            Task(
-                name="Leichtathletik_Disziplinen",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes", task_key=ndb.Key(Task, "Leichtathletik_Disziplinen"))],
-                selectors=[
-                    Selector(name="disciplin", xpath="""//select[@id="selectDiscipline"]/option/@value""", type=str, is_key=True),
-                ],
-            ),
-            Task(
-                name="Leichtathletik_Athleten",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/search?name=&country=&discipline=%s&gender=", task_key=ndb.Key(Task, "Leichtathletik_Disziplinen"), selector_name="disciplin")],
-                selectors=[
-                    Selector(name="athlete_id", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//@href""", type=int, is_key=True),
-                    Selector(name="first_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]//a/text()""", type=unicode),
-                    Selector(name="last_name", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[1]/a/span/text()""", type=unicode),
-                    Selector(name="sex", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[2]/text()""", type=unicode),
-                    Selector(name="country", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[3]/text()""", type=unicode),
-                    Selector(name="birthday", xpath="""//table[@class="records-table"]//tr[not(@class)]/td[4]/text()""", type=datetime),
-                ],
-            ),
-            Task(
-                name="Leichtathletik_Performance",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", task_key=ndb.Key(Task, "Leichtathletik_Athleten"), selector_name="athlete_id")],
-                selectors=[
-                    Selector(name="athlete_id", xpath="""//meta[@name="url"]/@content""", type=int),
-                    Selector(name="performance", xpath="""//div[@id="panel-progression"]//tr[count(td)>3]//td[2]""", type=float),
-                    Selector(name="datetime", xpath="""merge_lists(//div[@id="panel-progression"]//tr[count(td)>3]/td[last()], //div[@id="panel-progression"]//tr[count(td)>3]/td[1])""", type=datetime),
-                    Selector(name="place", xpath="""//div[@id="panel-progression"]//tr[count(td)>3]//td[last()-1]""", type=unicode),
-                    Selector(name="discipline", xpath="""exe(//div[@id="panel-progression"]//tr[count(td)>3]//td[2], "../preceding::tr/td[@class='sub-title']")""", type=unicode),
-                    Selector(name="performance_key", xpath="""merge_lists(//div[@id="panel-progression"]//tr[count(td)>3]/td[last()], //div[@id="panel-progression"]//tr[count(td)>3]/td[1], //meta[@name="url"]/@content)""", type=unicode, is_key=True),
-                ],
-            ),
-            Task(
-                name="Leichtathletik_Top_Performance",
-                url_selectors=[
-                  UrlSelector(url_raw="http://www.iaaf.org%s/1999", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2000", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2001", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2002", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2003", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2004", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2005", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2006", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2007", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2008", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2009", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2010", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2011", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2012", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2013", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter=""),
-                  UrlSelector(url_raw="http://www.iaaf.org%s/2014", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", start_parameter="")
-                ],
-                selectors=[
-                  Selector(name="athlete_id", is_key=True, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]//@href''', type=int, regex="\d[\d.,]*"),
-                  Selector(name="first_name", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/a/text()''', type=unicode, regex="[^\n\r ,.][^\n\r]+"),
-                  Selector(name="last_name", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/a/span/text()''', type=unicode, regex="[^\n\r ,.][^\n\r]+"),
-                  Selector(name="performance", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[2]/text()''', type=float, regex="\d[\d.,:]*"),
-                  Selector(name="datetime", is_key=True, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[last()]/text()''', type=datetime, regex="[^\n\r ,.][^\n\r]+"),
-                  Selector(name="gender", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+"),
-                  Selector(name="class", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+"),
-                  Selector(name="discpiplin", is_key=True, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+/[^/]+"),
-                  Selector(name="birthday", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[preceding-sibling::td[position()=1 and ./a]]''', type=datetime, regex="[^\n\r ,.][^\n\r]+"),
-                  Selector(name="nation", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/img/@alt''', type=unicode, regex="[^\n\r ,.][^\n\r]+"),
-                  Selector(name="area", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+"),
-                  Selector(name="rank", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[1]''', type=int, regex="\d[\d.,]*")
-                ]
-            ),
-            Task(
-                name="Leichtathletik_Top_Urls",
-                url_selectors=[UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", task_key=ndb.Key(Task, "Leichtathletik_Top_Urls"))],
-                selectors=[
-                    Selector(name="url", xpath="""//input[@type="radio"]/@value""", type=unicode, is_key=True),
-                ],
-            ),
-
-            ##### ImmoScout #####
-            Task(
-                name="Wohnungen",
-                url_selectors=[
-                    UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Bayern/Muenchen", task_key=ndb.Key(Task, "Wohnungen"), selector_name="naechste_seite"),
-                    UrlSelector(url_raw="http://www.immobilienscout24.de%s", start_parameter="/Suche/S-T/Wohnung-Miete/Berlin/Berlin", task_key=ndb.Key(Task, "Wohnungen"), selector_name="naechste_seite"),
-                ],
-                selectors=[
-                    Selector(name="wohnungs_id", xpath="""//span[@class="title"]//a/@href""", type=int, is_key=True),
-                    Selector(name="naechste_seite", xpath="""//span[@class="nextPageText"]/..//@href"""),
-                ],
-            ),
-            Task(
-                name="Wohnungsdetails",
-                url_selectors=[UrlSelector(url_raw="http://www.immobilienscout24.de/expose/%s", task_key=ndb.Key(Task, "Wohnungen"), selector_name="wohnungs_id")],
-                selectors=[
-                    Selector(name="wohnungs_id", xpath="""//a[@id="is24-ex-remember-link"]/@href""", type=int, is_key=True),
-                    Selector(name="postleitzahl", xpath="""//div[@data-qa="is24-expose-address"]//text()""", type=int, regex="\d{5}"),
-                    Selector(name="zimmeranzahl", xpath="""//dd[@class="is24qa-zimmer"]//text()""", type=int),
-                    Selector(name="wohnflaeche", xpath="""//dd[@class="is24qa-wohnflaeche-ca"]//text()""", type=int),
-                    Selector(name="kaltmiete", xpath="""//dd[@class="is24qa-kaltmiete"]//text()""", type=int),
-                ],
-            ),
+Task(
+    name="Fussball_Einsaetze",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/%s", task_key=ndb.Key('Task', 'Fussball_Spieler'), selector_name="spieler_id", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="spieler_id", is_key=True, xpath='''(//a[@class="megamenu"])[1]/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="minutes_played", is_key=False, xpath='''//div[@class="responsive-table"]/table//tr/td[2]/following-sibling::*[last()]''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="date", is_key=True, xpath='''//div[@class="responsive-table"]/table//tr/td[2]''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Fussball_Saisons",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.transfermarkt.de/3262/kader/verein/3262/", task_key=ndb.Key('Task', 'Fussball_Saisons'), selector_name="saison", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="saison", is_key=True, xpath='''//select[@name="saison_id"]/option/@value''', type=int, regex="200[8-9]|201[0-5]")
+    ]
+),
+Task(
+    name="Fussball_Spieler",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.transfermarkt.de/%s", task_key=ndb.Key('Task', 'Fussball_Vereine'), selector_name="verein_url", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="spieler_id", is_key=True, xpath='''//a[@class="spielprofil_tooltip"]/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="saison", is_key=True, xpath='''//select[@name="saison_id"]/option[@selected="selected"]/@value''', type=int, regex="\\d[\\d.,]*")
+    ]
+),
+Task(
+    name="Fussball_Spieler_Details",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", task_key=ndb.Key('Task', 'Fussball_Spieler'), selector_name="spieler_id", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="spieler_id", is_key=True, xpath='''//link[@rel="canonical"]/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="name", is_key=False, xpath='''//div[@class="spielername-profil"]/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="position", is_key=False, xpath='''//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="max_value", is_key=False, xpath='''//table[@class="auflistung mt10"]/tr[3]/td/text()''', type=float, regex="\\d[\\d.,:]*"),
+      Selector(name="birthday", is_key=False, xpath='''//td[preceding-sibling::th/text()="Geburtsdatum:"]/a/text()''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="size", is_key=False, xpath='''//td[preceding-sibling::th/text()="GrÃ¶ÃŸe:"]//text()''', type=float, regex="\\d[\\d.,:]*"),
+      Selector(name="retire_date", is_key=False, xpath='''//table[@class="profilheader"]//td[preceding-sibling::*[.//@title="Karriereende"]]''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Fussball_Transfers",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.transfermarkt.de/daten/profil/spieler/%s", task_key=ndb.Key('Task', 'Fussball_Spieler'), selector_name="spieler_id", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="spieler_id", is_key=False, xpath='''(//a[@class="megamenu"])[1]/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="date", is_key=False, xpath='''(//table)[3]//tr/td[2]//text()''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="from", is_key=False, xpath='''(//table)[3]//tr/td[5]/a/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="to", is_key=False, xpath='''(//table)[3]//tr/td[8]/a/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="transfer_key", is_key=True, xpath='''merge_lists((//a[@class="megamenu"])[1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Fussball_Vereine",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", task_key=ndb.Key('Task', 'Fussball_Saisons'), selector_name="saison", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="verein_url", is_key=True, xpath='''//table[@class='items']//tr/td[@class='hauptlink no-border-links']/a[1]/@href''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Fussball_Verletzungen",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.transfermarkt.de/spieler/verletzungen/spieler/%s", task_key=ndb.Key('Task', 'Fussball_Spieler'), selector_name="spieler_id", selector_name2=""),
+      UrlSelector(url_raw="http://www.transfermarkt.de%s", task_key=ndb.Key('Task', 'Fussball_Verletzungen'), selector_name="next_page", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="spieler_id", is_key=True, xpath='''(//a[@class="megamenu"])[1]/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="injury", is_key=False, xpath='''//table[@class="items"]//tr/td[2]/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="from", is_key=True, xpath='''//table[@class="items"]//tr/td[3]/text()''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="to", is_key=False, xpath='''//table[@class="items"]//tr/td[4]/text()''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="duration", is_key=False, xpath='''//table[@class="items"]//tr/td[5]/text()''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="missed_games", is_key=False, xpath='''//table[@class="items"]//tr/td[6]/text()''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="next_page", is_key=False, xpath='''//li[@class="naechste-seite"]/a/@href''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="club", is_key=False, xpath='''exe(//table[@class="items"]//tr/td[6],".//@title")''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Leichtathletik_Athleten",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.iaaf.org/athletes/search?name=&country=&discipline=%s&gender=", task_key=ndb.Key('Task', 'Leichtathletik_Disziplinen'), selector_name="disciplin", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="athlete_id", is_key=True, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[1]//@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="first_name", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[1]//a/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="last_name", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[1]/a/span/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="sex", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[2]/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="country", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[3]/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="birthday", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[4]/text()''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Leichtathletik_Disziplinen",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.iaaf.org/athletes", task_key=ndb.Key('Task', 'Leichtathletik_Disziplinen'), selector_name="disciplin", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="disciplin", is_key=True, xpath='''//select[@id="selectDiscipline"]/option/@value''', type=str, regex="")
+    ]
+),
+Task(
+    name="Leichtathletik_Performance",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.iaaf.org/athletes/athlete=%s", task_key=ndb.Key('Task', 'Leichtathletik_Athleten'), selector_name="athlete_id", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="athlete_id", is_key=False, xpath='''//meta[@name="url"]/@content''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="performance", is_key=False, xpath='''//div[@id="panel-progression"]//tr[count(td)>3]//td[2]''', type=float, regex="\\d[\\d.,:]*"),
+      Selector(name="datetime", is_key=False, xpath='''merge_lists(//div[@id="panel-progression"]//tr[count(td)>3]/td[last()], //div[@id="panel-progression"]//tr[count(td)>3]/td[1])''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="place", is_key=False, xpath='''//div[@id="panel-progression"]//tr[count(td)>3]//td[last()-1]''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="discipline", is_key=False, xpath='''exe(//div[@id="panel-progression"]//tr[count(td)>3]//td[2], "../preceding::tr/td[@class='sub-title']")''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="performance_key", is_key=True, xpath='''merge_lists(//div[@id="panel-progression"]//tr[count(td)>3]/td[last()], //div[@id="panel-progression"]//tr[count(td)>3]/td[1], //meta[@name="url"]/@content)''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Leichtathletik_Sprint_100m_Herren",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", task_key=ndb.Key('Task', 'Leichtathletik_Sprint_100m_Herren'), selector_name="athlete_id", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="athlete_id", is_key=True, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[4]/a/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="first_name", is_key=False, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[4]/a/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="last_name", is_key=False, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[4]/a/span/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="result_time", is_key=False, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[2]/text()''', type=float, regex="\\d[\\d.,:]*"),
+      Selector(name="competition_date", is_key=False, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[9]/text()''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+")
+    ]
+),
+Task(
+    name="Leichtathletik_Top_Performance",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.iaaf.org%s/1999", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2000", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2001", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2002", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2003", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2004", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2005", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2006", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2007", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2008", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2009", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2010", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2011", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2012", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2013", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2=""),
+      UrlSelector(url_raw="http://www.iaaf.org%s/2014", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="url", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="athlete_id", is_key=True, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]//@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="first_name", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/a/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="last_name", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/a/span/text()''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="performance", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[2]/text()''', type=float, regex="\\d[\\d.,:]*"),
+      Selector(name="datetime", is_key=True, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[last()]/text()''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="gender", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+"),
+      Selector(name="class", is_key=True, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+"),
+      Selector(name="discpiplin", is_key=True, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+/[^/]+"),
+      Selector(name="birthday", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[preceding-sibling::td[position()=1 and ./a]]''', type=datetime, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="nation", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/img/@alt''', type=unicode, regex="[^\\n\\r ,.][^\\n\\r]+"),
+      Selector(name="area", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=unicode, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+"),
+      Selector(name="rank", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[1]''', type=int, regex="\\d[\\d.,]*")
+    ]
+),
+Task(
+    name="Leichtathletik_Top_Urls",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", task_key=ndb.Key('Task', 'Leichtathletik_Top_Urls'), selector_name="", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="url", is_key=True, xpath='''//input[@type="radio"]/@value''', type=str, regex="")
+    ]
+),
+Task(
+    name="Wohnungen",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.immobilienscout24.de%s", task_key=ndb.Key('Task', 'Wohnungen'), selector_name="naechste_seite", selector_name2=""),
+      UrlSelector(url_raw="http://www.immobilienscout24.de%s", task_key=ndb.Key('Task', 'Wohnungen'), selector_name="naechste_seite", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="wohnungs_id", is_key=True, xpath='''//span[@class="title"]//a/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="naechste_seite", is_key=False, xpath='''//span[@class="nextPageText"]/..//@href''', type=str, regex="")
+    ]
+),
+Task(
+    name="Wohnungsdetails",
+    url_selectors=[
+      UrlSelector(url_raw="http://www.immobilienscout24.de/expose/%s", task_key=ndb.Key('Task', 'Wohnungen'), selector_name="wohnungs_id", selector_name2="")
+    ],
+    selectors=[
+      Selector(name="wohnungs_id", is_key=True, xpath='''//a[@id="is24-ex-remember-link"]/@href''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="postleitzahl", is_key=False, xpath='''//div[@data-qa="is24-expose-address"]//text()''', type=int, regex="\\d{5}"),
+      Selector(name="zimmeranzahl", is_key=False, xpath='''//dd[@class="is24qa-zimmer"]//text()''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="wohnflaeche", is_key=False, xpath='''//dd[@class="is24qa-wohnflaeche-ca"]//text()''', type=int, regex="\\d[\\d.,]*"),
+      Selector(name="kaltmiete", is_key=False, xpath='''//dd[@class="is24qa-kaltmiete"]//text()''', type=int, regex="\\d[\\d.,]*")
+    ]
+)
         ]

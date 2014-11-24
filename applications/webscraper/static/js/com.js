@@ -136,9 +136,13 @@ function update_results_properties(url_number) {
         dataType: "json",
         data:{name: results_id},
         success: function(selector_names) {
-            $(".results_properties").eq(url_number).empty();
+            $(".results_properties1").eq(url_number).empty();
             for (var i in selector_names) {
-                $(".results_properties").eq(url_number).append("<option>" + selector_names[i] + "</option>")
+                $(".results_properties1").eq(url_number).append("<option>" + selector_names[i] + "</option>")
+            }
+            $(".results_properties2").eq(url_number).empty();
+            for (var i in selector_names) {
+                $(".results_properties2").eq(url_number).append("<option>" + selector_names[i] + "</option>")
             }
         }
     });

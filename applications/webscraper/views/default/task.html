@@ -18,12 +18,16 @@
                                 <option {{="selected" if url_selector.task_key == task_key else ""}}>{{=task_key.id()}}</option>
                             {{pass}}
                         </select>
-                        <select name="url_selector_name[]" class="results_properties">
+                        <select name="url_selector_names1[]" class="results_properties1" style="width: 150px">
                             {{for selector in url_selector.task_key.get().selectors:}}
-                                <option {{="selected" if url_selector.selector_name == selector.name else ""}}>{{=selector.name}}</option>
+                                <option {{="selected" if selector.name == url_selector.selector_name else ""}}>{{=selector.name}}</option>
                             {{pass}}
                         </select>
-                        <input type="text" name="url_start_parameter[]" placeholder="Initial Value" value="{{=url_selector.start_parameter}}" class="input_short">
+                        <select name="url_selector_names2[]" class="results_properties2" style="width: 150px">
+                            {{for selector in url_selector.task_key.get().selectors:}}
+                                <option {{="selected" if selector.name == url_selector.selector_name2 else ""}}>{{=selector.name}}</option>
+                            {{pass}}
+                        </select>
                     </span>
                 </div>
             {{pass}}

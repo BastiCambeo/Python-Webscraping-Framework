@@ -81,8 +81,8 @@ def save_task():
     task.url_selectors = [UrlSelector(
                             url_raw=request.vars.getlist("url_raw[]")[i],
                             task_key=ndb.Key(Task, request.vars.getlist("url_results_id[]")[i]),
-                            selector_name=request.vars.getlist("url_selector_name[]")[i],
-                            start_parameter=request.vars.getlist("url_start_parameter[]")[i]
+                            selector_name=request.vars.getlist("url_selector_names1[]")[i],
+                            selector_name2=request.vars.getlist("url_selector_names2[]")[i],
                           ) for i in range(len(request.vars.getlist("url_raw[]")))]
     task.selectors = [Selector(
                             is_key= unicode(i) in request.vars.selector_is_key,
@@ -112,5 +112,9 @@ def run_command():
     except Exception as e:
         traceback.print_exc()
         return json.dumps({"results": e.message})
+
+def export_all_tasks():
+    response.headers["Content-Type"] = "text/plain"
+    return ",\n".join([task.export() for task in Task.query().fetch()])
 
 session.forget()
