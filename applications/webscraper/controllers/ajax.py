@@ -52,7 +52,7 @@ def get_data():
 
     results = task.get_results_as_table(query_options=query_options)
     # results = "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % value for value in row) for row in results)
-    results = "\n".join("\t".join("%s" % value for value in row) for row in results) + "\n"
+    results = "\n".join("\t".join("%s" % (value if value is not None else "") for value in row) for row in results) + "\n"
     return json.dumps(dict(results=results, cursor=query_options.cursor.urlsafe() if query_options.cursor else "", has_next=query_options.has_next))
 
 def get_gcs_data():

@@ -11,6 +11,7 @@ response.menu = [
 ]
 import os
 from google.appengine.api import taskqueue
+
 statistics = taskqueue.Queue(name="task").fetch_statistics()
 tasks_status = "%s remaining Tasks  %s Tasks finished last minute" % (statistics.tasks, statistics.executed_last_minute or 0)
 
@@ -22,9 +23,11 @@ else:
     response.menu += [(T('Datastore Admin'), False, 'https://ah-builtin-python-bundle-dot-cambeotrunk.appspot.com/_ah/datastore_admin/?app_id=s~cambeotrunk&adminconsolecustompage')]
     response.menu += [(tasks_status, False, 'https://appengine.google.com/queues?&app_id=s~cambeotrunk')]
 
+
 @auth.requires_login()
 def index():
     return dict(tasks=Task.query().fetch())
+
 
 def user():
     """
@@ -43,6 +46,7 @@ def user():
     """
     return dict(form=auth())
 
+
 def call():
     """
     exposes services. for example:
@@ -52,6 +56,7 @@ def call():
     """
     return service()
 
+
 @auth.requires_login()
 def task():
     task = Task.get(request.vars.name)
@@ -59,13 +64,16 @@ def task():
     data = task.get_results_as_table(Query_Options(limit=50))
     return dict(task=task, data=data)
 
+
 @auth.requires_login()
 def console():
     return dict()
 
+
 @cache.action(time_expire=999999999)
 def relative_age():
     from collections import OrderedDict
+
     birthdays = OrderedDict()
     for month in ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]:
         birthdays[month] = 0
@@ -78,13 +86,11 @@ def relative_age():
             pass
     return dict(birthdays=birthdays)
 
-@cache.action(time_expire=999999999)
-def injuries():
-    return BEAUTIFY(sorted(set(result.injury for result in Task.get("Fussball_Verletzungen").get_results())))
 
 @cache.action(time_expire=999999999)
 def spieler_details():
     from collections import Counter
+
     injury_counts = Counter([result.spieler_id for result in ndb.Key(Task, "Fussball_Verletzungen").get().get_results()])
     task = ndb.Key(Task, "Fussball_Spieler_Details").get()
     data = [tuple(selector.name for selector in task.selectors) + ("injury_count",)]
@@ -93,18 +99,32 @@ def spieler_details():
     response.headers["Content-Type"] = "application/vnd.ms-excel"
     return Task.export_data_to_excel(data)
 
-def injuries_in_action():
-    injury_keys = Task.get("Fussball_Verletzungen").get_results(query_options=Query_Options(keys_only=True))  # get all injuries
-    game_keys = [ndb.Key("Result", "Fussball_Einsaetze" + injury_key.id()[21:]) for injury_key in injury_keys]  # get all games that correspond to an injury
-    injury_keys = [ndb.Key("Result", "Fussball_Verletzungen" + game.key.id()[18:]) for game in ndb.get_multi(game_keys) if game]
-    injuries = ndb.get_multi(injury_keys)
-    for injury in injuries:
-        injury.in_action = 1
-    ndb.put_multi(injuries)
-    injuries = ndb.get_multi(injury_keys)
-    return BEAUTIFY(injuries)
 
-def top_performance():
-    limit = int(request.vars.limit) if request.vars.limit else None
-    offset = int(request.vars.offset) if request.vars.offset else None
-    return TABLE(list(Task.get("Leichtathletik_Top_Performance").get_results_as_table(query_options=Query_Options(limit=limit, offset=offset))))
+def injuries_in_player_seasons():
+    """ Remove all injuries that are not in the season in which a player played """
+    injuries = Task.get("Fussball_Verletzungen").get_results()  # get all injuries
+    del_injury_keys = []
+    put_injuries = []
+    players = set("%s %s" % (player.spieler_id, player.saison) for player in Task.get("Fussball_Spieler").get_results())  # get all players with seasons
+    for injury in injuries:
+        injury.season = (getattr(injury, "from") - timedelta(weeks=26)).year
+        if "%s %s" % (injury.spieler_id, injury.season) in players:
+            put_injuries.append(injury)
+        else:
+            del_injury_keys.append(injury.key)
+    ndb.put_multi(put_injuries)
+    ndb.delete_multi(del_injury_keys)
+
+def injuries_in_action():
+    """ Determine if an injury occured in action:= a match was scheduled for the same day or the day before """
+    injuries = Result.query(Result.task_key == ndb.Key(Task, "Fussball_Verletzungen")).fetch()
+    matches_same_day = [bool(match) for match in ndb.get_multi([ndb.Key("Result", "Fussball_Einsaetze%s %s" % (injury.spieler_id, getattr(injury, "from"))) for injury in injuries])]
+    matches_day_before = [bool(match) for match in ndb.get_multi([ndb.Key("Result", "Fussball_Einsaetze%s %s" % (injury.spieler_id, getattr(injury, "from") + timedelta(days=-1))) for injury in injuries])]
+    put_injuries = []
+    for i in range(len(injuries)):
+        if matches_same_day[i] or matches_day_before[i]:
+            injuries[i].in_action = 1
+            put_injuries.append(injuries[i])
+
+    ndb.put_multi(put_injuries)
+    return "%s %s" % (any(matches_same_day), any(matches_day_before))
