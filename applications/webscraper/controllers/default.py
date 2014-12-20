@@ -128,3 +128,6 @@ def injuries_in_action():
 
     ndb.put_multi(put_injuries)
     return "%s %s" % (any(matches_same_day), any(matches_day_before))
+
+def injuries_per_day():
+    return repr([dict(id=injury.spieler_id, begin=getattr(injury, "from"), end=injury.to) for injury in Result.query(Result.task_key == ndb.Key(Task, "Fussball_Verletzungen")).fetch() if injury.to])
