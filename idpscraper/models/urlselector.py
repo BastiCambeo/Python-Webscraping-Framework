@@ -1,8 +1,6 @@
 __author__ = 'Sebastian Hofstetter'
 
 from django.db import models
-from idpscraper.models.task import Task
-from idpscraper.models.result import Result
 
 
 class UrlSelector(models.Model):
@@ -11,7 +9,7 @@ class UrlSelector(models.Model):
     url_raw = models.TextField()
     selector_name = models.TextField()
     selector_name2 = models.TextField()
-    task_key = models.ForeignKey(Task)
+    task_key = models.ForeignKey('Task')
 
     @property
     def has_dynamic_url(self):

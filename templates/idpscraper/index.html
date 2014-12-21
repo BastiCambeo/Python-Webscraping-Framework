@@ -1,11 +1,14 @@
-{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
-{{response.title = 'Tasks'}}
-{{extend 'layout.html'}}
+{% extends "idpscraper/layout.html" %}
 
+{% block title %}All Tasks{% endblock %}
+{% block h1 %}All Tasks{% endblock %}
+
+{% block content %}
 <ul>
-    {{for task in tasks:}}
-        <li><a href="{{=url('default', 'task', vars={"name": task.name})}}">{{=task.name}}</a></li>
-    {{pass}}
+    {% for task in tasks %}
+        <li><a href="{% url 'idpscraper:task' task.name %}">{{ task.name }}</a></li>
+    {% endfor %}
 </ul>
 
 <button class="btn" onclick="create_new_task()">Create New Task</button>
+{% endblock %}
