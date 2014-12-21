@@ -1,9 +1,11 @@
-{{extend "layout.html"}}
-{{include "templates.html"}}
+{% extends "idpscraper/layout.html" %}
+
+{% block title %}{{ task.name }}{% endblock %}
+{% block h1 %}{{ task.name }}{% endblock %}
 
 <!-- Properties -->
 <form id="task_form">
-    <input type="hidden" name="task_name" value="{{=task.name}}">
+    <input type="hidden" name="task_name" value="{{ task.name }}">
 
     <div>
         <h3>URLs</h3>
@@ -11,7 +13,7 @@
         <div id="url_selectors">
             {{for i, url_selector in enumerate(task.url_selectors):}}
                 <div class="url_selector">
-                    <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
+                    <input type="text" name="url_raw[]" placeholder="http://..." value="{{ url_selector.url_raw }}" class="input_long">
                     <span class="advanced">
                         <select name="url_results_id[]" class="results_id" onchange="update_results_properties({{=i}})">
                             {{for task_key in Task.query().fetch(keys_only=True):}}
@@ -65,18 +67,18 @@
 
 <!-- Options -->
 <button class="btn" onclick="save()">Save</button>
-<button class="btn btn-success" onclick="test('{{=task.name}}')">Test</button>
-<button class="btn btn-success" onclick="run('{{=task.name}}')">Run</button>
-<button class="btn btn-danger advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
-<button class="btn btn-danger advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
-<button class="btn" onclick="load_data('{{=task.name}}', 1000, true)">Download All Data</button>
-<button class="btn advanced" onclick='window.location ="{{=url('ajax', 'export_task.txt', vars={'name': task.name})}}"'>Export Task</button>
+<button class="btn btn-success" onclick="test('{{ task.name }}')">Test</button>
+<button class="btn btn-success" onclick="run('{{ task.name }}')">Run</button>
+<button class="btn btn-danger advanced" onclick="delete_task('{{ task.name }}')">Delete</button>
+<button class="btn btn-danger advanced" onclick="delete_results('{{ task.name }}')">Delete Results</button>
+<button class="btn" onclick="load_data('{{ task.name }}', 1000, true)">Download All Data</button>
+<button class="btn advanced" onclick='window.location ="{% url 'idpscraper:export_task' task.name %}"'>Export Task</button>
 <button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
 
 {{TABLE(data)}}
 
 <script>
     $(function() {
-        swap_advanced();swap_advanced();  // set current view
+        apply_advanced();  // set current view
     })
 </script>

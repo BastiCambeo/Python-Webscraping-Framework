@@ -108,12 +108,21 @@ function swap_advanced() {
 
     if (!window.location.hash) {
         window.location.hash = "advanced";
-        $(".advanced").css( "display", "inline");
         $("#swap_advanced").text("Simple View");
     } else {
         window.location.hash = "";
-        $(".advanced").hide();
         $("#swap_advanced").text("Advanced View");
+    }
+    apply_advanced();
+}
+
+function apply_advanced() {
+    /* Apply advanced or simple view respectively */
+
+    if (!window.location.hash) {
+        $(".advanced").hide();
+    } else {
+        $(".advanced").css( "display", "inline");
     }
 }
 

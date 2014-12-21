@@ -9,4 +9,5 @@ urlpatterns = [
     url(r'^task/([^/]+)$', views.task, name='task'),
     url(r'^console$', views.console, name='console'),
     url(r'^relative_age$', views.relative_age, name='relative_age'),
+    url(r'^export_task.txt', views.export_task, name='export_task'),
 ]
