@@ -1,5 +1,10 @@
-{{extend "layout.html"}}
+{% extends "idpscraper/layout.html" %}
 
+{% block title %}Console{% endblock %}
+{% block h1 %}Console{% endblock %}
+
+{% block content %}
 <input type="text" id="command" class="input_long" value='Result.query(Result.task_key==ndb.Key(Task, "Fussball_Einsaetze")).count()'><br>
 
 <button class="btn" onclick="console_eval($('#command').val())">Eval</button>
+{% endblock %}

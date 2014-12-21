@@ -17,8 +17,8 @@ def task():
     return dict(task=task, data=data)
 
 
-def console():
-    return dict()
+def console(request):
+    return render(request, 'idpscraper/console.html')
 
 
 def relative_age():
