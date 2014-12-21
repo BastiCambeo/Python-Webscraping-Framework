@@ -1,0 +1,82 @@
+{{extend "layout.html"}}
+{{include "templates.html"}}
+
+<!-- Properties -->
+<form id="task_form">
+    <input type="hidden" name="task_name" value="{{=task.name}}">
+
+    <div>
+        <h3>URLs</h3>
+
+        <div id="url_selectors">
+            {{for i, url_selector in enumerate(task.url_selectors):}}
+                <div class="url_selector">
+                    <input type="text" name="url_raw[]" placeholder="http://..." value="{{=url_selector.url_raw}}" class="input_long">
+                    <span class="advanced">
+                        <select name="url_results_id[]" class="results_id" onchange="update_results_properties({{=i}})">
+                            {{for task_key in Task.query().fetch(keys_only=True):}}
+                                <option {{="selected" if url_selector.task_key == task_key else ""}}>{{=task_key.id()}}</option>
+                            {{pass}}
+                        </select>
+                        <select name="url_selector_names1[]" class="results_properties1" style="width: 150px">
+                            {{for selector in url_selector.task_key.get().selectors:}}
+                                <option {{="selected" if selector.name == url_selector.selector_name else ""}}>{{=selector.name}}</option>
+                            {{pass}}
+                        </select>
+                        <select name="url_selector_names2[]" class="results_properties2" style="width: 150px">
+                            {{for selector in url_selector.task_key.get().selectors:}}
+                                <option {{="selected" if selector.name == url_selector.selector_name2 else ""}}>{{=selector.name}}</option>
+                            {{pass}}
+                        </select>
+                    </span>
+                </div>
+            {{pass}}
+        </div>
+
+        <button type="button" class="btn" onclick="remove_url_selector()">-</button>
+        <button type="button" class="btn" onclick="add_url_selector()">+</button>
+    </div>
+
+    <div>
+        <h3>Content</h3>
+
+        <div id="content_selectors">
+           {{for i, selector in enumerate(task.selectors):}}
+                <div class="content_selector">
+                    <input type="checkbox" {{="checked" if selector.is_key else ""}} name="selector_is_key" value="{{=i}}"> Key &nbsp;&nbsp;
+                    <input type="text" name="selector_name[]" value="{{=selector.name}}" placeholder='Player Height' class="input_short">
+                    <input type="text" name="selector_xpath[]" value="{{=selector.xpath}}" placeholder='//div[class="player_height"]//text()' class="input_long">
+                    <span class="advanced">
+                        <select name="selector_type[]">
+                            {{for i, selector_type in enumerate(Selector.TYPES):}}
+                                <option {{="selected" if selector.type == selector_type else ""}} value="{{=i}}">{{=Selector.TYPE_STR[selector_type]}}</option>
+                            {{pass}}
+                        </select>
+                        <input type="text" name="selector_regex[]" value="{{=selector.regex}}" placeholder='RegEx (optional)' class="input_short">
+                    </span>
+                </div>
+            {{pass}}
+        </div>
+
+        <button type="button" class="btn" onclick="remove_content_selector()">-</button>
+        <button type="button" class="btn" onclick="add_content_selector()">+</button>
+    </div>
+</form>
+
+<!-- Options -->
+<button class="btn" onclick="save()">Save</button>
+<button class="btn btn-success" onclick="test('{{=task.name}}')">Test</button>
+<button class="btn btn-success" onclick="run('{{=task.name}}')">Run</button>
+<button class="btn btn-danger advanced" onclick="delete_task('{{=task.name}}')">Delete</button>
+<button class="btn btn-danger advanced" onclick="delete_results('{{=task.name}}')">Delete Results</button>
+<button class="btn" onclick="load_data('{{=task.name}}', 1000, true)">Download All Data</button>
+<button class="btn advanced" onclick='window.location ="{{=url('ajax', 'export_task.txt', vars={'name': task.name})}}"'>Export Task</button>
+<button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
+
+{{TABLE(data)}}
+
+<script>
+    $(function() {
+        swap_advanced();swap_advanced();  // set current view
+    })
+</script>

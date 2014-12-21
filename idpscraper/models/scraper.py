@@ -4,12 +4,8 @@ import logging
 from lxml import html, etree  # xpath support
 from requests import Session  # for login required http requests
 from idpscraper.models.selector import *
+from idpscraper.models.result import Result
 import re
-
-
-class Result:
-    def __repr__(self):
-        return repr(self.__dict__)
 
 
 def parse(html_src: str, selectors: 'list[Selector]'=None) -> 'list[Result]':

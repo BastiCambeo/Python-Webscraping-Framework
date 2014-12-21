@@ -61,3 +61,4 @@ class Selector(models.Model):
     xpath = models.TextField()
     regex = models.TextField(blank=True)
     is_key = models.BooleanField(default=False)
+    task_key = models.ForeignKey('Task')

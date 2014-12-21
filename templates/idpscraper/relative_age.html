@@ -1,0 +1,26 @@
+{{response.title = "Relative Age Effect"}}
+{{extend "layout.html"}}
+
+<div id="cards_status_piechart" style="height:700px"></div>
+
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+    google.load('visualization', '1.0', {'packages': ['corechart']});
+    google.setOnLoadCallback(drawChart);
+    function drawChart() {
+        // Pie Cake: Edited Cards by Status
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Birthmonth');
+        data.addColumn('number', 'Slices');
+        data.addRows(
+                [
+                {{for month in birthdays:}}
+                    ["{{="%s: %s" % (month, birthdays[month])}}", {{=birthdays[month]}}],
+                {{pass}}
+                ]
+        );
+        var options = {'title': '{{=sum(birthdays.values())}} Athletes overall'};
+        var cards_chart = new google.visualization.PieChart(document.getElementById('cards_status_piechart'));
+        cards_chart.draw(data, options);
+    }
+</script>
