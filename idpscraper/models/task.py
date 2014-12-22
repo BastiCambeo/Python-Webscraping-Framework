@@ -44,10 +44,10 @@ class Task(models.Model):
     def get(name):
         return Task.objects.get(pk=name)
 
-    def get_results_as_table(self):
+    def as_table(self, results):
         yield tuple(selector.name for selector in self.selectors)
 
-        for result in self.results:
+        for result in results:
             yield tuple(getattr(result, selector.name) if hasattr(result, selector.name) else None for selector in self.selectors)
 
     def run(self, limit=None, store=True) -> 'list[Result]':
@@ -88,7 +88,7 @@ class Task(models.Model):
     selectors=%s\n)""" % (self.name, url_selectors, selectors)
 
     def export_to_excel(self):
-        return Task.export_data_to_excel(data=self.get_results_as_table())
+        return Task.export_data_to_excel(data=self.as_table(self.results))
 
     @staticmethod
     def export_data_to_excel(data):

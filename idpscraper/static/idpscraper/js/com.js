@@ -10,10 +10,9 @@ function save(reload) {
     reload = typeof reload !== 'undefined' ? reload : true;
     $.ajax({
         type: "POST",
-        url: "/webscraper/ajax/save_task",
+        url: "/idpscraper/save_task",
         data: $('#task_form').serialize(),
         success: function() {
-            // $.web2py.flash("Successfully Saved");
             if (reload) window.location.reload();
         },
         async: false
@@ -24,8 +23,7 @@ function run(name) {
     save(false);
     $.ajax({
         type: "POST",
-        url: "/webscraper/ajax/schedule_task",
-        data: {name: name},
+        url: "/idpscraper/run_task/" + name,
         success: function() {
             window.location.reload();
         }
@@ -51,7 +49,7 @@ function load_data(name, limit, load_all) {
 
     $.ajax({
         type: "POST",
-        url: "/webscraper/ajax/get_data",
+        url: "/idpscraper/get_data",
         data: data,
         dataType: "json",
         success: function (data) {
@@ -67,9 +65,8 @@ function load_data(name, limit, load_all) {
 function test(name) {
     save(false);
     $.ajax({
-        type: "POST",
-        url: "/webscraper/ajax/test_task",
-        data: {name: name},
+        type: "GET",
+        url: "/idpscraper/test_task/" + name,
         dataType: "json",
         success: function(data) {
             $.web2py.flash(data.results);
@@ -80,8 +77,7 @@ function test(name) {
 function delete_results(name) {
     if (confirm('Are you sure you want to delete all results of this task? This cannot be undone!')) {
         $.ajax({
-		url:"/webscraper/ajax/delete_results",
-		data:{name: name},
+		url:"/idpscraper/delete_results/" + name,
         type: "POST",
         success: function() {
             window.location.reload();
@@ -93,9 +89,8 @@ function delete_results(name) {
 function delete_task(name) {
     if (confirm('Are you sure you want to delete this task COMPLETELY? This cannot be undone!')) {
         $.ajax({
-            url: "/webscraper/ajax/delete_task",
+            url: "/idpscraper/delete_task/" + name,
             type: "POST",
-            data: {name: name},
             success: function () {
                 window.location.href = "/";
             }
@@ -132,7 +127,7 @@ function create_new_task() {
     var task_name = prompt("Please enter the task name", "");
 
     if (task_name != null && task_name != "") {
-        window.location = "/webscraper/ajax/new_task?name=" + task_name
+        window.location = "/idpscraper/new_task/" + task_name
     }
 }
 
@@ -140,7 +135,7 @@ function update_results_properties(url_number) {
     /* When the results_id selection changes, the results_properties list must be updated */
     var results_id = $(".results_id").eq(url_number).val();
     $.ajax({
-        url:"/webscraper/ajax/get_task_selector_names",
+        url:"/idpscraper/get_task_selector_names",
         type: "GET",
         dataType: "json",
         data:{name: results_id},
@@ -179,7 +174,7 @@ function remove_content_selector() {
 function console_eval(command) {
     $.ajax({
         type: "POST",
-        url: "/webscraper/ajax/run_command",
+        url: "/idpscraper/run_command",
         data: {command: command},
         dataType: "json",
         success: function(data) {

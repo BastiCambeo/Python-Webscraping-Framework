@@ -12,7 +12,7 @@
             <h3>URLs</h3>
 
             <div id="url_selectors">
-                {% for url_selector in task.url_selector_set %}
+                {% for url_selector in task.url_selectors %}
                     <div class="url_selector">
                         <input type="text" name="url[]" placeholder="http://..." value="{{ url_selector.url }}" class="input_long">
                     <span class="advanced">
@@ -22,12 +22,12 @@
                             {% endfor %}
                         </select>
                         <select name="url_selector_names1[]" class="results_properties1" style="width: 150px">
-                            {% for selector in url_selector.task.selector_set %}
+                            {% for selector in url_selector.task.selectors %}
                                 <option {% if selector.name == url_selector.selector_name %} selected {% endif %}>{{ selector.name }}</option>
                             {% endfor %}
                         </select>
                         <select name="url_selector_names2[]" class="results_properties2" style="width: 150px">
-                            {% for selector in url_selector.task.selector_set %}
+                            {% for selector in url_selector.task.selectors %}
                                 <option {% if selector.name == url_selector.selector_name2 %} selected {% endif %}>{{ selector.name }}</option>
                             {% endfor %}
                         </select>
