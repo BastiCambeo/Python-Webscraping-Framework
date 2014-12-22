@@ -15,16 +15,16 @@ class Task(models.Model):
 
     @property
     def selectors(self):
-        return self.selector_set.all()
+        return list(self.selector_set.all())
 
     @property
     def url_selectors(self):
-        return self.urlselector_set.all()
+        return list(self.urlselector_set.all())
 
     @property
     def key_selectors(self):
         """ Returns all key selectors """
-        return [selector for selector in self.selector_set.all() if selector.is_key]
+        return [selector for selector in self.selectors if selector.is_key]
 
     @property
     def recursive_url_selectors(self):
@@ -114,6 +114,7 @@ class Task(models.Model):
     def example_tasks() -> 'list[Task]':
         task = Task(name="test")
         task.save()
-        Selector(name="spieler_id", type=IntType(), xpath="""(//a[@class="megamenu"])[1]/@href""", task=task).save()
+        Selector(name="spieler_id", type=IntType(), xpath="""(//a[@class="megamenu"])[1]/@href""", task=task, is_key=True).save()
         Selector(name="injury", type=StrType(), xpath="""//table[@class="items"]//tr/td[2]/text()""", task=task).save()
+        Selector(name="from", type=DatetimeType(), xpath="""//table[@class="items"]//tr/td[3]/text()""", task=task, is_key=True).save()
         UrlSelector(url="http://www.transfermarkt.de/spieler/verletzungen/spieler/10", task=task).save()

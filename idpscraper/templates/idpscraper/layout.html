@@ -27,13 +27,13 @@
 <div class="navbar navbar-inverse">
 
     <!-- Flash Message -->
-    {% if messages %}
-        <div class="flash">
+    <div class="flash">
+        {% if messages %}
             {% for message in messages %}
                 {{ message }}
             {% endfor %}
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 
     <!-- Navbar -->
     <div class="navbar-inner">

@@ -91,7 +91,7 @@ def test_task(request, name):
     try:
         task = Task.get(name)
         results = task.test()[:30]
-        results = "<br>".join(task.as_table(results))
+        results = "<br>".join((" ".join(str(cell) for cell in row) for row in task.as_table(results)))
         return HttpResponse(json.dumps(dict(results=results)), content_type="application/json")
     except Exception as e:
         traceback.print_exc()

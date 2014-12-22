@@ -523,7 +523,7 @@
       var flash = $('.flash');
       web2py.hide_flash();
       flash.html(message).addClass(status);
-      if(flash.html()) flash.append('<span id="closeflash"> &times; </span>').slideDown();
+      if(flash.html().trim()) flash.append('<span id="closeflash"> &times; </span>').slideDown();
     },
     hide_flash: function () {
       $('.flash').fadeOut(0).html('');
