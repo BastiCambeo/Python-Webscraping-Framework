@@ -6,7 +6,10 @@ from django.db import models
 class Result(models.Model):
     """ Holds results of webscraping executions """
     key = models.TextField(primary_key=True)
-    task_key = models.ForeignKey("Task")
+    task = models.ForeignKey("Task")
+
+    def __str__(self):
+        return self.task.name
 
     def get_key(self, selectors):
         if all([result_value_dict[selector.name] for selector in self.key_selectors]):

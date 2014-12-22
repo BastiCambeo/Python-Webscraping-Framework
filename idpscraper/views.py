@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.http import HttpResponseRedirect, HttpResponse
 from idpscraper.models.task import Task
 from django.contrib import messages
+from django.core.urlresolvers import reverse
 import json
 
 
@@ -11,10 +12,11 @@ def index(request):
     return render(request, 'idpscraper/index.html', dict(tasks=Task.objects.all()))
 
 
-def task():
-    task = Task.get(request.vars.name)
-    data = task.get_results_as_table(Query_Options(limit=50))
-    return dict(task=task, data=data)
+def task(request, name):
+    task = Task.get(name)
+    data = task.get_results_as_table()
+    all_tasks = Task.objects.all()
+    return render(request, 'idpscraper/task.html', dict(task=task, data=data, all_tasks=all_tasks))
 
 
 def console(request):
@@ -166,11 +168,11 @@ def save_task():
     """ Takes the post request from the task form and saves the values to the task """
     task = Task.get(request.vars.task_name)
     task.url_selectors = [UrlSelector(
-        url_raw=request.vars.getlist("url_raw[]")[i],
+        url=request.vars.getlist("url[]")[i],
         task_key=ndb.Key(Task, request.vars.getlist("url_results_id[]")[i]),
         selector_name=request.vars.getlist("url_selector_names1[]")[i],
         selector_name2=request.vars.getlist("url_selector_names2[]")[i],
-    ) for i in range(len(request.vars.getlist("url_raw[]")))]
+    ) for i in range(len(request.vars.getlist("url[]")))]
     task.selectors = [Selector(
         is_key=unicode(i) in request.vars.selector_is_key,
         name=request.vars.getlist("selector_name[]")[i],
@@ -192,9 +194,9 @@ def result_count():
     return i
 
 
-def put_tasks():
-    ndb.put_multi(Task.example_tasks())
-    redirect("/")
+def put_tasks(request):
+    Task.example_tasks()
+    return HttpResponseRedirect(reverse("idpscraper:index"))
 
 
 def run_command():
