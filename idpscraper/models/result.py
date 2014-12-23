@@ -9,7 +9,7 @@ class Result(models.Model):
     task = models.ForeignKey("Task")
 
     def __str__(self):
-        return self.task.name
+        return repr({k: v for k, v in self.__dict__.items() if k not in ["task_id", "_state", "key"]})
 
     def get_key(self, selectors):
         if all([result_value_dict[selector.name] for selector in self.key_selectors]):

@@ -51,8 +51,8 @@
                         <input type="text" name="selector_xpath[]" value="{{ selector.xpath }}" placeholder='//div[class="player_height"]//text()' class="input_long">
                     <span class="advanced">
                         <select name="selector_type[]">
-                            {% for selector_type in Selector.TYPES %}
-                                <option {% if selector.type == selector_type %} selected {% endif %} value="{{ forloop.counter0 }}">{{ selector_type }}</option>
+                            {% for selector_choice in selector_choices %}
+                                <option {% if selector_choice.0 == selector.type %} selected {% endif %} value="{{ forloop.counter0 }}">{{ selector_choice.1 }}</option>
                             {% endfor %}
                         </select>
                         <input type="text" name="selector_regex[]" value="{{ selector.regex }}" placeholder='RegEx (optional)' class="input_short">

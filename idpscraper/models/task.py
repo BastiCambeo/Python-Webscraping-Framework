@@ -2,7 +2,7 @@ __author__ = 'Sebastian Hofstetter'
 
 import itertools
 from idpscraper.models.scraper import http_request
-from idpscraper.models.selector import *
+from idpscraper.models.selector import Selector
 from idpscraper.models.urlselector import UrlSelector
 from idpscraper.models.result import Result
 from django.db import models
@@ -62,7 +62,7 @@ class Task(models.Model):
 
                 # Fetch Result #
                 results = http_request(url, selectors=self.selectors)
-                all_results.append(results)
+                all_results += results
 
                 if store and results:
                     # Store result in database #
@@ -114,7 +114,7 @@ class Task(models.Model):
     def example_tasks() -> 'list[Task]':
         task = Task(name="test")
         task.save()
-        Selector(name="spieler_id", type=IntType(), xpath="""(//a[@class="megamenu"])[1]/@href""", task=task, is_key=True).save()
-        Selector(name="injury", type=StrType(), xpath="""//table[@class="items"]//tr/td[2]/text()""", task=task).save()
-        Selector(name="from", type=DatetimeType(), xpath="""//table[@class="items"]//tr/td[3]/text()""", task=task, is_key=True).save()
+        Selector(name="spieler_id", type=Selector.INTEGER, xpath="""(//a[@class="megamenu"])[1]/@href""", task=task, is_key=True).save()
+        Selector(name="injury", type=Selector.STRING, xpath="""//table[@class="items"]//tr/td[2]/text()""", task=task).save()
+        Selector(name="from", type=Selector.DATETIME, xpath="""//table[@class="items"]//tr/td[3]/text()""", task=task, is_key=True).save()
         UrlSelector(url="http://www.transfermarkt.de/spieler/verletzungen/spieler/10", task=task).save()

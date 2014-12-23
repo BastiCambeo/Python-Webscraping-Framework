@@ -2,17 +2,18 @@ __author__ = 'Sebastian Hofstetter'
 
 from idpscraper.models import converters
 from django.db import models
+from picklefield.fields import PickledObjectField
 
 
-class Type(int):
+class Type():
     def __init__(self):
         raise NotImplementedError
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+
 
 class IntType(Type):
-    def __new__(cls, *args, **kwargs):
-        return super(IntType, cls).__new__(cls, 0)
-
     def __init__(self):
         self.regex = r"\d[\d.,]*"
 
@@ -24,9 +25,6 @@ class IntType(Type):
 
 
 class StrType(Type):
-    def __new__(cls, *args, **kwargs):
-        return super(StrType, cls).__new__(cls, 1)
-
     def __init__(self):
         self.regex = r"[^\n\r ,.][^\n\r]+"
 
@@ -38,9 +36,6 @@ class StrType(Type):
 
 
 class DatetimeType(Type):
-    def __new__(cls, *args, **kwargs):
-        return super(DatetimeType, cls).__new__(cls, 2)
-
     def __init__(self):
         self.regex = r"\d[\d.,]*"
 
@@ -52,9 +47,6 @@ class DatetimeType(Type):
 
 
 class FloatType(Type):
-    def __new__(cls, *args, **kwargs):
-        return super(FloatType, cls).__new__(cls, 3)
-
     def __init__(self):
         self.regex = r"\d[\d.,:]*"
 
@@ -67,15 +59,27 @@ class FloatType(Type):
 
 class Selector(models.Model):
     """ Contains information for selecting a ressource on a xml/html page """
-
-    TYPES = [IntType(), StrType(), DatetimeType(), FloatType()]
+    INTEGER = IntType()
+    STRING = StrType()
+    DATETIME = DatetimeType()
+    FLOAT = FloatType()
+    TYPE_CHOICES = (
+        (INTEGER, str(INTEGER),),
+        (STRING, str(STRING),),
+        (DATETIME, str(DATETIME)),
+        (FLOAT, str(FLOAT))
+    )
 
     name = models.TextField()
-    type = models.IntegerField()
+    type = PickledObjectField(choices=TYPE_CHOICES)
     xpath = models.TextField()
     regex = models.TextField(blank=True)
     is_key = models.BooleanField(default=False)
     task = models.ForeignKey('Task')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.regex = self.regex or self.type.regex
 
     def __str__(self):
         return self.name

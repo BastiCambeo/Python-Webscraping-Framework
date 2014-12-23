@@ -2,10 +2,13 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.http import HttpResponseRedirect, HttpResponse
 from idpscraper.models.task import Task
+from idpscraper.models.selector import Selector
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 import json
 import traceback
+
+from idpscraper.models.template import render as render2
 
 
 def index(request):
@@ -17,11 +20,16 @@ def task(request, name):
     task = Task.get(name)
     data = task.as_table(task.results)
     all_tasks = Task.objects.all()
-    return render(request, 'idpscraper/task.html', dict(task=task, data=data, all_tasks=all_tasks))
+    return render(request, 'idpscraper/task.html', dict(task=task, data=data, all_tasks=all_tasks, selector_choices=Selector.TYPE_CHOICES))
 
 
 def console(request):
     return render(request, 'idpscraper/console.html')
+
+
+def test(request):
+    return HttpResponse(render2(filename="idpscraper/templates/idpscraper/test.html"))
+    return HttpResponse(timezone.localtime(timezone.now()))
 
 
 def relative_age(request):

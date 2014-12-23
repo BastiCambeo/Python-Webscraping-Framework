@@ -3,7 +3,7 @@ __author__ = "Sebastian Hofstetter"
 import logging
 from lxml import html, etree  # xpath support
 from requests import Session  # for login required http requests
-from idpscraper.models.selector import *
+from idpscraper.models.selector import Selector
 from idpscraper.models.result import Result
 import re
 
@@ -12,8 +12,8 @@ def parse(html_src: str, selectors: 'list[Selector]'=None) -> 'list[Result]':
     """
     Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression
 
-    >>> parse(html_src="<html><a> test </a></html>", selectors=[Selector(name="value", type=StrType(), xpath="//text()", is_key=True)])
-    [{'value': 'test'}]
+    >>> parse(html_src="<html><a> test </a></html>", selectors=[Selector(name="value", type=Selector.STRING, xpath="//text()", is_key=True)])
+    [<Result: {'value': 'test'}>]
     """
 
     def textify(node):
@@ -64,22 +64,20 @@ def parse(html_src: str, selectors: 'list[Selector]'=None) -> 'list[Result]':
         else:
             selector_results = nodes
 
-        # auto cast result type #
-        if hasattr(selector, "output_cast"):
-            selector_results = [selector.output_cast(data) for data in selector_results]
+        selector_results = [selector.type(data) for data in selector_results]
 
-        selectors_results += [selector_results]
+        selectors_results.append(selector_results)
 
     # convert selector results from a tuple of lists to a list of tuples #
-    result = []
+    results = []
     key_selectors = [selector for selector in selectors if selector.is_key]
     for y in range(max([len(selectors_results[selectors.index(key_selector)]) for key_selector in key_selectors])):  # Take as many results, as there are results for a key selector
-        row = Result()
+        result = Result()
         for x, selector in enumerate(selectors):
             selectors_results[x] = selectors_results[x] or [None]  # Guarantee that an element is there
-            setattr(row, selector.name, selectors_results[x][min(y, len(selectors_results[x])-1)])
-        result += [row]
-    return result
+            setattr(result, selector.name, selectors_results[x][min(y, len(selectors_results[x])-1)])
+        results.append(result)
+    return results
 
 
 def login(url: str, user: str, password: str) -> Session:
@@ -101,8 +99,6 @@ def http_request(url: str, selectors: 'list[Selector]'=None, session: Session=No
     """
     Returns the response of an http get-request to a given url
 
-    >>> http_request("http://localhost", selectors=[Selector(name="value", type=StrType(), xpath="//div[@id='summary']/h1/text()", is_key=True)])
-    [{'value': 'It worked!'}]
     """
 
     session = session or Session()
