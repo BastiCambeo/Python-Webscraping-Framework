@@ -1,5 +1,7 @@
 {% extends "idpscraper/layout.html" %}
 
+{% load idpscraper_extras %}
+
 {% block title %}{{ task.name }}{% endblock %}
 {% block h1 %}{{ task.name }}{% endblock %}
 
@@ -18,7 +20,7 @@
                     <span class="advanced">
                         <select name="url_results_id[]" class="results_id" onchange="update_results_properties({{ forloop.counter0 }})">
                             {% for task in all_tasks %}
-                                <option {% if url_selector.task_key == task_key %} selected {% endif %}>{{ task.name }}</option>
+                                <option {% if url_selector.task_id == task.pk %} selected {% endif %}>{{ task.name }}</option>
                             {% endfor %}
                         </select>
                         <select name="url_selector_names1[]" class="results_properties1" style="width: 150px">
@@ -52,7 +54,7 @@
                     <span class="advanced">
                         <select name="selector_type[]">
                             {% for selector_choice in selector_choices %}
-                                <option {% if selector_choice.0 == selector.type %} selected {% endif %} value="{{ forloop.counter0 }}">{{ selector_choice.1 }}</option>
+                                <option {% if forloop.counter0 == selector.type %} selected {% endif %} value="{{ forloop.counter0 }}">{{ selector_choice.1 }}</option>
                             {% endfor %}
                         </select>
                         <input type="text" name="selector_regex[]" value="{{ selector.regex }}" placeholder='RegEx (optional)' class="input_short">

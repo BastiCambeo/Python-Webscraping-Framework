@@ -13,13 +13,10 @@ class Task(models.Model):
 
     name = models.TextField(primary_key=True)
 
-    @property
-    def selectors(self):
-        return list(self.selector_set.all())
-
-    @property
-    def url_selectors(self):
-        return list(self.urlselector_set.all())
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.selectors = list(self.selector_set.all())
+        self.url_selectors = list(self.urlselector_set.all())
 
     @property
     def key_selectors(self):

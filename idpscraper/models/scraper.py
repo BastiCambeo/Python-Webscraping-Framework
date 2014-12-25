@@ -64,7 +64,7 @@ def parse(html_src: str, selectors: 'list[Selector]'=None) -> 'list[Result]':
         else:
             selector_results = nodes
 
-        selector_results = [selector.type(data) for data in selector_results]
+        selector_results = [selector.cast(data) for data in selector_results]  # cast to type
 
         selectors_results.append(selector_results)
 

@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.core.urlresolvers import reverse
 import json
 import traceback
-
+from idpscraper.models import serialize
 from idpscraper.models.template import render as render2
 
 
@@ -182,8 +182,9 @@ def save_task(request, name):
     return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 
-def get_task_selector_names(request):
-    return json.dumps([selector.name for selector in Task.get(request.vars.name).selectors])
+def get_task(request, name):
+    task = Task.get(name)
+    return HttpResponse(json.dumps(task, default=serialize.serialize), content_type="application/json")
 
 
 def put_tasks(request):

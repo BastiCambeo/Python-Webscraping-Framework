@@ -13,5 +13,6 @@ urlpatterns = [
     url(r'^put_tasks', views.put_tasks, name='put_tasks'),
     url(r'^save_task/([^/]+)', views.save_task, name='save_task'),
     url(r'^test_task/([^/]+)', views.test_task, name='test_task'),
+    url(r'^get_task/([^/]+)', views.get_task, name='get_task'),
     url(r'^test$', views.test, name='test'),
 ]
