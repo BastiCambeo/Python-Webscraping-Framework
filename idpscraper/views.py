@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.http import HttpResponseRedirect, HttpResponse
 from idpscraper.models.task import Task
 from idpscraper.models.selector import Selector
+from idpscraper.models.urlselector import UrlSelector
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 import json
@@ -150,8 +151,9 @@ def export_task(request):
     return task.export()
 
 
-def delete_task(request):
-    Task.get(request.vars.name).delete()
+def delete_task(request, name):
+    Task.get(name).delete()
+    return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 
 def new_task(request):
@@ -163,22 +165,28 @@ def new_task(request):
 
 def save_task(request, name):
     """ Takes the post request from the task form and saves the values to the task """
-    return HttpResponse(json.dumps(dict()), content_type="application/json")
     task = Task.get(name)
-    task.url_selectors = [UrlSelector(
-        url=request.vars.getlist("url[]")[i],
-        task_key=ndb.Key(Task, request.vars.getlist("url_results_id[]")[i]),
-        selector_name=request.vars.getlist("url_selector_names1[]")[i],
-        selector_name2=request.vars.getlist("url_selector_names2[]")[i],
-    ) for i in range(len(request.vars.getlist("url[]")))]
-    task.selectors = [Selector(
-        is_key=unicode(i) in request.vars.selector_is_key,
-        name=request.vars.getlist("selector_name[]")[i],
-        xpath=request.vars.getlist("selector_xpath[]")[i],
-        type=Selector.TYPES[int(request.vars.getlist("selector_type[]")[i])],
-        regex=request.vars.getlist("selector_regex[]")[i],
-    ) for i in range(len(request.vars.getlist("selector_name[]")))]
-    task.put()
+
+    UrlSelector.objects.filter(task=task).delete()
+    url_selectors = [UrlSelector(
+        url=request.POST.getlist("url[]")[i],
+        task_id=request.POST.getlist("url_results_id[]")[i],
+        selector_name=request.POST.getlist("url_selector_names1[]")[i],
+        selector_name2=request.POST.getlist("url_selector_names2[]")[i],
+    ) for i in range(len(request.POST.getlist("url[]")))]
+    UrlSelector.objects.bulk_create(url_selectors)
+
+    Selector.objects.filter(task=task).delete()
+    selectors = [Selector(
+        is_key=str(i) in request.POST.getlist("selector_is_key"),
+        name=request.POST.getlist("selector_name[]")[i],
+        xpath=request.POST.getlist("selector_xpath[]")[i],
+        type=int(request.POST.getlist("selector_type[]")[i]),
+        regex=request.POST.getlist("selector_regex[]")[i],
+        task=task
+    ) for i in range(len(request.POST.getlist("selector_name[]")))]
+    Selector.objects.bulk_create(selectors)
+
     return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 

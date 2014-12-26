@@ -48,6 +48,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'idpscraper.models.exception_middleware.ExceptionMiddleware'
 )
 
 ROOT_URLCONF = 'idp.urls'

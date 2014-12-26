@@ -20,7 +20,7 @@
                     <span class="advanced">
                         <select name="url_results_id[]" class="results_id" onchange="update_results_properties({{ forloop.counter0 }})">
                             {% for task in all_tasks %}
-                                <option {% if url_selector.task_id == task.pk %} selected {% endif %}>{{ task.name }}</option>
+                                <option {% if task.pk == url_selector.task_name %} selected {% endif %}>{{ task.name }}</option>
                             {% endfor %}
                         </select>
                         <select name="url_selector_names1[]" class="results_properties1" style="width: 150px">
@@ -66,10 +66,11 @@
             <button type="button" class="btn" onclick="remove_content_selector()">-</button>
             <button type="button" class="btn" onclick="add_content_selector()">+</button>
         </div>
+        {% csrf_token %}
     </form>
 
     <!-- Options -->
-    <button class="btn" onclick="save()">Save</button>
+    <button class="btn" onclick="save('{{ task.name }}', function() {window.location.reload()})">Save</button>
     <button class="btn btn-success" onclick="test('{{ task.name }}')">Test</button>
     <button class="btn btn-success" onclick="run('{{ task.name }}')">Run</button>
     <button class="btn btn-danger advanced" onclick="delete_task('{{ task.name }}')">Delete</button>

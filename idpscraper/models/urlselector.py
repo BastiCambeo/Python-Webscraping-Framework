@@ -8,6 +8,7 @@ class UrlSelector(models.Model):
 
     url = models.TextField()
     task = models.ForeignKey('Task')
+    task_name = models.TextField()
     selector_name = models.TextField()
     selector_name2 = models.TextField()
 

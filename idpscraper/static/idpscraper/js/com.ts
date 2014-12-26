@@ -4,25 +4,42 @@
 
 /// <reference path="jquery.d.ts" />
 
+function get_cookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie != '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+var csrftoken = get_cookie('csrftoken');
+var DEFAULT = () => {};
+
 $.ajaxSetup({
-    timeout: 24*3600*1000
+    timeout: 24*3600*1000,
+    beforeSend: function(xhr, settings) {
+        xhr.setRequestHeader("X-CSRFToken", csrftoken);
+    }
 });
 
-function save(reload) {
-    reload = typeof reload !== 'undefined' ? reload : true;
+function save(name, callback=DEFAULT) {
     $.ajax({
         type: "POST",
-        url: "/idpscraper/save_task",
+        url: "/idpscraper/save_task/" + name,
         data: $('#task_form').serialize(),
-        success: function() {
-            if (reload) window.location.reload();
-        },
-        async: false
+        success: callback,
     });
 }
 
 function run(name) {
-    save(false);
+    save(name);
     $.ajax({
         type: "POST",
         url: "/idpscraper/run_task/" + name,
