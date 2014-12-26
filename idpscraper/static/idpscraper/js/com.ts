@@ -35,6 +35,7 @@ function save(name, callback=DEFAULT) {
         url: "/idpscraper/save_task/" + name,
         data: $('#task_form').serialize(),
         success: callback,
+        async: false
     });
 }
 
@@ -82,7 +83,7 @@ function load_data(name, limit, load_all) {
 }
 
 function test(name) {
-    save(false);
+    save(name);
     $.ajax({
         type: "GET",
         url: "/idpscraper/test_task/" + name,

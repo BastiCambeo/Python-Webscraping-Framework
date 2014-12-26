@@ -4,6 +4,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from idpscraper.models.task import Task
 from idpscraper.models.selector import Selector
 from idpscraper.models.urlselector import UrlSelector
+from idpscraper.models.result import Result
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 import json
@@ -116,8 +117,10 @@ def run_task(request):
         return json.dumps({"results": e.message})
 
 
-def delete_results(request):
-    return Task.get(request.vars.name).delete_results()
+def delete_results(request, name):
+    task = Task.get(name)
+    Result.objects.filter(task=task).delete()
+    return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 
 def export_excel(request):
