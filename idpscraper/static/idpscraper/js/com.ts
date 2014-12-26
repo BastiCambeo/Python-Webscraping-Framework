@@ -50,6 +50,10 @@ function run(name) {
     });
 }
 
+function export_excel(name) {
+    window.location.href = "/idpscraper/export_excel/" + name + ".xls"
+}
+
 var cursor="", has_next=true, data_blobs=[];
 function load_data(name, limit, load_all) {
     var data = {name: name, cursor:cursor}

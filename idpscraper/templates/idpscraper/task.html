@@ -75,7 +75,7 @@
     <button class="btn btn-success" onclick="run('{{ task.name }}')">Run</button>
     <button class="btn btn-danger advanced" onclick="delete_task('{{ task.name }}')">Delete</button>
     <button class="btn btn-danger advanced" onclick="delete_results('{{ task.name }}')">Delete Results</button>
-    <button class="btn" onclick="load_data('{{ task.name }}', 1000, true)">Download All Data</button>
+    <button class="btn" onclick="export_excel('{{ task.name }}')">Export to Excel</button>
     <button class="btn advanced" onclick='window.location ="{% url 'idpscraper:export_task' task.name %}"'>Export Task</button>
     <button class="btn" id="swap_advanced" onclick="swap_advanced()">Advanced View</button>
 

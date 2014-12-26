@@ -104,7 +104,7 @@ class Task(models.Model):
                 ws.write(x, y, column)
 
         # save #
-        f = io.BytesIO('%s.xls' % "export")
+        f = io.BytesIO()
         w.save(f)
         del w, ws
         f.seek(0)

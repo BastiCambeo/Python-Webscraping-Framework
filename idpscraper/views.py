@@ -58,8 +58,7 @@ def spieler_details(request):
     data = [tuple(selector.name for selector in task.selectors) + ("injury_count",)]
     for result in task.get_results():
         data.append(tuple(getattr(result, selector.name) for selector in task.selectors) + (injury_counts[result.spieler_id], ))
-    response.headers["Content-Type"] = "application/vnd.ms-excel"
-    return Task.export_data_to_excel(data)
+    return HttpResponse(Task.export_data_to_excel(data), content_type="application/vnd.ms-excel")
 
 
 def injuries_in_player_seasons(request):
@@ -123,11 +122,9 @@ def delete_results(request, name):
     return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 
-def export_excel(request):
-    name = request.vars.name
+def export_excel(request, name):
     task = Task.get(name)
-    response.headers["Content-Type"] = "application/vnd.ms-excel"
-    return task.export_to_excel()
+    return HttpResponse(task.export_to_excel(), content_type="application/vnd.ms-excel")
 
 
 def get_data(request):
