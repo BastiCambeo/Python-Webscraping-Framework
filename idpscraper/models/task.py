@@ -63,7 +63,10 @@ class Task(models.Model):
 
                 if store and results:
                     # Store result in database #
-                    Result.objects.bulk_create(results)
+                    for result in results:
+                        result.task = self
+                        result.key = result.get_key(self)
+                        result.save()
 
                     # Schedule new urls on recursive call #
                     if self.recursive_url_selectors:

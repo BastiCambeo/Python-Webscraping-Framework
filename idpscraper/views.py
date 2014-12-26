@@ -108,13 +108,13 @@ def test_task(request, name):
         return HttpResponse(json.dumps(dict(results=str(e))), content_type="application/json")
 
 
-def run_task(request):
+def run_task(request, name):
     try:
-        Task.get(request.vars.name).schedule()
-        return json.dumps({})
+        Task.get(name).run()
+        return HttpResponse(json.dumps(dict()), content_type="application/json")
     except Exception as e:
         traceback.print_exc()
-        return json.dumps({"results": e.message})
+        return HttpResponse(json.dumps(dict(results=e.message)), content_type="application/json")
 
 
 def delete_results(request, name):

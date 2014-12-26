@@ -1,17 +1,31 @@
 __author__ = 'Sebastian Hofstetter'
 
 from django.db import models
+from picklefield.fields import PickledObjectField
 
 
 class Result(models.Model):
     """ Holds results of webscraping executions """
     key = models.TextField(primary_key=True)
-    task = models.ForeignKey("Task")
+    task = models.ForeignKey('Task')
+    results = PickledObjectField(default=lambda: dict())
 
     def __str__(self):
         return repr({k: v for k, v in self.__dict__.items() if k not in ["task_id", "_state", "key"]})
 
-    def get_key(self, selectors):
-        if all([result_value_dict[selector.name] for selector in self.key_selectors]):
-            result_id = u" ".join([str(result_value_dict[selector.name]) for selector in self.key_selectors])  # Assemble Result_key from key selectors
-            return self.name + result_id
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # set no-sql values to result object from .results dict #
+        for k, v in self.results.items():
+            setattr(self, k, v)
+
+    def save(self, *args, **kwargs):
+        # set no-sql values from result object to .results dict #
+        self.results = {selector.name: getattr(self, selector.name) for selector in self.task.selectors}
+        super().save(*args, **kwargs)
+
+    def get_key(self, task):
+        if all([getattr(self, selector.name) for selector in task.selectors if selector.is_key]):
+            result_id = u" ".join([str(getattr(self, selector.name)) for selector in task.selectors if selector.is_key])  # Assemble Result_key from key selectors
+            return task.name + result_id
