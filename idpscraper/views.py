@@ -26,7 +26,6 @@ def console(request):
 
 def test(request):
     return HttpResponse(render2(filename="idpscraper/templates/idpscraper/test.html"))
-    return HttpResponse(timezone.localtime(timezone.now()))
 
 
 def relative_age(request):
@@ -43,17 +42,6 @@ def relative_age(request):
         except:
             pass
     return dict(birthdays=birthdays)
-
-
-def spieler_details(request):
-    from collections import Counter
-
-    injury_counts = Counter([result.spieler_id for result in ndb.Key(Task, "Fussball_Verletzungen").get().get_results()])
-    task = ndb.Key(Task, "Fussball_Spieler_Details").get()
-    data = [tuple(selector.name for selector in task.selectors) + ("injury_count",)]
-    for result in task.get_results():
-        data.append(tuple(getattr(result, selector.name) for selector in task.selectors) + (injury_counts[result.spieler_id], ))
-    return HttpResponse(Task.export_data_to_excel(data), content_type="application/vnd.ms-excel")
 
 
 def injuries_in_player_seasons(request):
@@ -122,23 +110,6 @@ def export_excel(request, name):
     return HttpResponse(task.export_to_excel(), content_type="application/vnd.ms-excel")
 
 
-def get_data(request):
-    name = request.vars.name
-    task = Task.get(name)
-    query_options = Query_Options()
-
-    if request.vars.limit:
-        query_options.limit = int(request.vars.limit)
-    if request.vars.cursor:
-        query_options.cursor = ndb.Cursor(urlsafe=request.vars.cursor)
-    elif request.vars.offset:
-        query_options.offset = int(request.vars.offset)
-
-    results = task.as_table(task.results)
-    results = "\n".join("\t".join("%s" % (value if value is not None else "") for value in row) for row in results) + "\n"
-    return json.dumps(dict(results=results, cursor=query_options.cursor.urlsafe() if query_options.cursor else "", has_next=query_options.has_next))
-
-
 def export_task(request, name):
     task = Task.get(name)
     return HttpResponse(task.export(), content_type="text/plain")
@@ -153,6 +124,7 @@ def new_task(request):
     name = request.POST["name"]
     Task(name=name).save()
     return HttpResponse(json.dumps(dict()), content_type="application/json")
+
 
 def save_task(request, name):
     """ Takes the post request from the task form and saves the values to the task """
@@ -197,8 +169,3 @@ def run_command(request):
         return json.dumps({"results": repr(eval(request.vars.command))})
     except Exception as e:
         return json.dumps({"results": str(e)})
-
-
-def export_all_tasks(request):
-    response.headers["Content-Type"] = "text/plain"
-    return ",\n".join([task.export() for task in Task.query().fetch()])
