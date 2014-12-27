@@ -132,11 +132,21 @@ function apply_advanced() {
         $(".advanced").css("display", "inline");
     }
 }
-function create_new_task() {
+function new_task() {
     /* Creates a new empty task */
     var task_name = prompt("Please enter the task name", "");
-    if (task_name != null && task_name != "") {
-        window.location.href = "/idpscraper/new_task/" + task_name;
+    if (task_name) {
+        $.ajax({
+            url: "/idpscraper/new_task",
+            type: "POST",
+            data: {
+                name: task_name
+            },
+            dataType: "json",
+            success: function () {
+                window.location.href = "/idpscraper/task/" + task_name;
+            }
+        });
     }
 }
 function get_task(name, callback) {

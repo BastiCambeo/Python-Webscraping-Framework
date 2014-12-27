@@ -151,10 +151,8 @@ def delete_task(request, name):
 
 def new_task(request):
     name = request.POST["name"]
-    assert not Task.get(name)  # Disallow overwriting of existing tasks
     Task(name=name).save()
-    return HttpResponseRedirect(reverse("idpscraper:task", args=[name]))
-
+    return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 def save_task(request, name):
     """ Takes the post request from the task form and saves the values to the task """

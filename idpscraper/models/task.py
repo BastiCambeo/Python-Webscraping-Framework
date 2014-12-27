@@ -21,7 +21,7 @@ class Task(models.Model):
 
     @property
     def recursive_url_selectors(self):
-        return [url_selector for url_selector in self.urlselector_set.all() if url_selector.has_dynamic_url and url_selector.task_key == self.pk]
+        return [url_selector for url_selector in self.url_selectors if url_selector.has_dynamic_url and url_selector.selector_task_id == self.pk]
 
     @property
     def results(self):
