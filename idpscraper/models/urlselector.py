@@ -6,8 +6,8 @@ from django.db import models
 class UrlSelector(models.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
 
+    task = models.ForeignKey('Task', related_name='url_selectors')
     url = models.TextField()
-    task = models.ForeignKey('Task')
     selector_task = models.ForeignKey('Task', related_name='related_url_selectors')
     selector_name = models.TextField()
     selector_name2 = models.TextField()
@@ -28,7 +28,7 @@ class UrlSelector(models.Model):
             yield self.url
 
     def get_url_parameters(self, results: 'list[Result]'=None, limit=None) -> 'list[str]':
-        results = results or self.selector_task.results
+        results = results or self.selector_task.results.all()
 
         if limit:
             results = results[:limit]

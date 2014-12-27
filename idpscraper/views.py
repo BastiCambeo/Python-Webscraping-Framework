@@ -15,7 +15,7 @@ def index(request):
 
 def task(request, name):
     task = Task.get(name)
-    data = task.as_table(task.results)
+    data = task.as_table(task.results.all())
     all_tasks = Task.objects.all()
     return render(request, 'idpscraper/task.html', dict(task=task, data=data, all_tasks=all_tasks, selector_choices=Selector.TYPE_CHOICES))
 
@@ -135,8 +135,8 @@ def save_task(request, name):
         task_id=name,
         url=request.POST.getlist("url[]")[i],
         selector_task_id=request.POST.getlist("url_results_id[]")[i],
-        selector_name=request.POST.getlist("url_selector_names1[]")[i],
-        selector_name2=request.POST.getlist("url_selector_names2[]")[i],
+        selector_name=request.POST.getlist("url_selector_name[]")[i],
+        selector_name2=request.POST.getlist("url_selector_name2[]")[i],
     ) for i in range(len(request.POST.getlist("url[]")))]
     UrlSelector.objects.bulk_create(url_selectors)
 
@@ -156,6 +156,8 @@ def save_task(request, name):
 
 def get_task(request, name):
     task = Task.get(name)
+    task.selectors = task.selectors.all()
+    task.url_selectors = task.url_selectors.all()
     return HttpResponse(json.dumps(task, default=serialize.serialize), content_type="application/json")
 
 

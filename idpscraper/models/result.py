@@ -7,7 +7,7 @@ from picklefield.fields import PickledObjectField
 class Result(models.Model):
     """ Holds results of webscraping executions """
     key = models.TextField(primary_key=True)
-    task = models.ForeignKey('Task')
+    task = models.ForeignKey('Task', related_name='results')
     results = PickledObjectField(default=lambda: dict())
 
     def __str__(self):
@@ -22,10 +22,10 @@ class Result(models.Model):
 
     def save(self, *args, **kwargs):
         # set no-sql values from result object to .results dict #
-        self.results = {selector.name: getattr(self, selector.name) for selector in self.task.selectors}
+        self.results = {selector.name: getattr(self, selector.name) for selector in self.task.selectors.all()}
         super().save(*args, **kwargs)
 
     def get_key(self, task):
-        if all([getattr(self, selector.name) for selector in task.selectors if selector.is_key]):
-            result_id = u" ".join([str(getattr(self, selector.name)) for selector in task.selectors if selector.is_key])  # Assemble Result_key from key selectors
+        if all([getattr(self, selector.name) for selector in task.selectors.all() if selector.is_key]):
+            result_id = u" ".join([str(getattr(self, selector.name)) for selector in task.selectors.all() if selector.is_key])  # Assemble Result_key from key selectors
             return task.name + result_id

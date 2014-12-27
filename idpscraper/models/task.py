@@ -7,41 +7,32 @@ import logging
 from lxml import html, etree  # xpath support
 from requests import Session  # for login required http requests
 import re
-
+import time
 
 class Task(models.Model):
     """ A Webscraper Task """
 
     name = models.TextField(primary_key=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.selectors = list(self.selector_set.all())
-        self.url_selectors = list(self.urlselector_set.all())
-
     @property
     def recursive_url_selectors(self):
-        return [url_selector for url_selector in self.url_selectors if url_selector.has_dynamic_url and url_selector.selector_task_id == self.pk]
-
-    @property
-    def results(self):
-        return Result.objects.filter(task=self.pk)
+        return [url_selector for url_selector in self.url_selectors.all() if url_selector.has_dynamic_url and url_selector.selector_task_id == self.pk]
 
     def __str__(self):
         return self.name
 
     def get_urls(self, results=None, limit=None):
-        return itertools.chain(*[url_selector.get_urls(results=results, limit=limit) for url_selector in self.urlselector_set.all()])  # Keep generators intact!
+        return itertools.chain(*[url_selector.get_urls(results=results, limit=limit) for url_selector in self.url_selectors.all()])  # Keep generators intact!
 
     @staticmethod
     def get(name):
         return Task.objects.get(pk=name)
 
     def as_table(self, results):
-        yield tuple(selector.name for selector in self.selectors)
+        yield tuple(selector.name for selector in self.selectors.all())
 
         for result in results:
-            yield tuple(getattr(result, selector.name) if hasattr(result, selector.name) else None for selector in self.selectors)
+            yield tuple(getattr(result, selector.name) if hasattr(result, selector.name) else None for selector in self.selectors.all())
 
     def run(self, limit=None, store=True) -> 'list[Result]':
         urls = set(self.get_urls(limit=limit))
@@ -49,6 +40,7 @@ class Task(models.Model):
         all_results = []
 
         while len(urls) > 0:
+            logging.error("Remaining: %s" % len(urls))
             url = urls.pop()
             if url not in visited_urls:
                 visited_urls.add(url)
@@ -72,10 +64,10 @@ class Task(models.Model):
         return self.run(limit=1, store=False)
 
     def export(self):
-        return ",\n".join([repr(m) for m in [self] + self.selectors + self.url_selectors])
+        return ",\n".join([repr(m) for m in [self] + self.selectors.all() + self.url_selectors.all()])
 
     def export_to_excel(self):
-        return Task.export_data_to_excel(data=self.as_table(self.results))
+        return Task.export_data_to_excel(data=self.as_table(self.results.all()))
 
     @staticmethod
     def export_data_to_excel(data):
@@ -270,13 +262,13 @@ class Task(models.Model):
         ns['merge_lists'] = merge_lists
         ns['exe'] = exe
 
-        if not self.selectors:
+        if not self.selectors.all():
             return html_src  # nothing to do
 
         parsed_tree = html.document_fromstring(html_src)
 
         selectors_results = []
-        for selector in self.selectors:
+        for selector in self.selectors.all():
             nodes = parsed_tree.xpath(selector.xpath)
             nodes = [textify(node) for node in nodes]
 
@@ -302,9 +294,9 @@ class Task(models.Model):
 
         # convert selector results from a tuple of lists to a list of tuples #
         results = []
-        for y in range(max([len(selectors_results[self.selectors.index(key_selector)]) for key_selector in self.selectors if key_selector.is_key])):  # Take as many results, as there are results for a key selector
+        for y in range(max([len(selectors_results[list(self.selectors.all()).index(key_selector)]) for key_selector in self.selectors.all() if key_selector.is_key])):  # Take as many results, as there are results for a key selector
             result = Result(task_id=self.name)
-            for x, selector in enumerate(self.selectors):
+            for x, selector in enumerate(self.selectors.all()):
                 selectors_results[x] = selectors_results[x] or [None]  # Guarantee that an element is there
                 setattr(result, selector.name, selectors_results[x][min(y, len(selectors_results[x])-1)])
 
@@ -333,10 +325,17 @@ class Task(models.Model):
         Returns the response of an http get-request to a given url
 
         """
+        success = False
 
-        session = session or Session()
-        html_src = session.get(url, timeout=120).text
-        parsing = self.parse(html_src)
+        while not success:
+            try:
+                logging.error("Requested %s" % url)  # For Debugging purposes
+                session = session or Session()
+                html_src = session.get(url, timeout=120).text
+                parsing = self.parse(html_src)
+                success = True
+            except Exception as e:
+                logging.error(str(e))
+                time.sleep(5)
 
-        logging.info("Requested %s" % url)  # For Debugging purposes
         return parsing

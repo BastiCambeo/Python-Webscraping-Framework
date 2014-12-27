@@ -29,12 +29,12 @@ class Selector(models.Model):
         converters.str2float
     )
 
+    task = models.ForeignKey('Task', related_name='selectors')
     name = models.TextField()
     type = models.IntegerField(choices=TYPE_CHOICES)
     xpath = models.TextField()
     regex = models.TextField()
     is_key = models.BooleanField(default=False)
-    task = models.ForeignKey('Task')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
