@@ -1,20 +1,15 @@
 from django.shortcuts import render
 from django.utils import timezone
 from django.http import HttpResponseRedirect, HttpResponse
-from idpscraper.models.task import Task
-from idpscraper.models.selector import Selector
-from idpscraper.models.urlselector import UrlSelector
-from idpscraper.models.result import Result
+from idpscraper.models import Task, Selector, UrlSelector, Result, serialize
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 import json
 import traceback
-from idpscraper.models import serialize
 from idpscraper.models.template import render as render2
 
 
 def index(request):
-    messages.info(request, 'Hello world.')
     return render(request, 'idpscraper/index.html', dict(tasks=Task.objects.all()))
 
 
@@ -113,7 +108,7 @@ def run_task(request, name):
         return HttpResponse(json.dumps(dict()), content_type="application/json")
     except Exception as e:
         traceback.print_exc()
-        return HttpResponse(json.dumps(dict(results=e.message)), content_type="application/json")
+        return HttpResponse(json.dumps(dict(results=str(e))), content_type="application/json")
 
 
 def delete_results(request, name):
@@ -144,11 +139,9 @@ def get_data(request):
     return json.dumps(dict(results=results, cursor=query_options.cursor.urlsafe() if query_options.cursor else "", has_next=query_options.has_next))
 
 
-def export_task(request):
-    name = request.vars.name
+def export_task(request, name):
     task = Task.get(name)
-    response.headers["Content-Type"] = "text/plain"
-    return task.export()
+    return HttpResponse(task.export(), content_type="text/plain")
 
 
 def delete_task(request, name):
@@ -157,10 +150,10 @@ def delete_task(request, name):
 
 
 def new_task(request):
-    task_name = request.vars.name
-    assert not Task.get(task_name)  # Disallow overwriting of existing tasks
-    Task(name=task_name).put()
-    redirect("/webscraper/default/task?name=%s" % task_name)
+    name = request.POST["name"]
+    assert not Task.get(name)  # Disallow overwriting of existing tasks
+    Task(name=name).save()
+    return HttpResponseRedirect(reverse("idpscraper:task", args=[name]))
 
 
 def save_task(request, name):
@@ -169,8 +162,9 @@ def save_task(request, name):
 
     UrlSelector.objects.filter(task=task).delete()
     url_selectors = [UrlSelector(
+        task_id=name,
         url=request.POST.getlist("url[]")[i],
-        task_id=request.POST.getlist("url_results_id[]")[i],
+        selector_task_id=request.POST.getlist("url_results_id[]")[i],
         selector_name=request.POST.getlist("url_selector_names1[]")[i],
         selector_name2=request.POST.getlist("url_selector_names2[]")[i],
     ) for i in range(len(request.POST.getlist("url[]")))]
@@ -178,12 +172,12 @@ def save_task(request, name):
 
     Selector.objects.filter(task=task).delete()
     selectors = [Selector(
+        task_id=name,
         is_key=str(i) in request.POST.getlist("selector_is_key"),
         name=request.POST.getlist("selector_name[]")[i],
         xpath=request.POST.getlist("selector_xpath[]")[i],
         type=int(request.POST.getlist("selector_type[]")[i]),
         regex=request.POST.getlist("selector_regex[]")[i],
-        task=task
     ) for i in range(len(request.POST.getlist("selector_name[]")))]
     Selector.objects.bulk_create(selectors)
 
@@ -204,7 +198,7 @@ def run_command(request):
     try:
         return json.dumps({"results": repr(eval(request.vars.command))})
     except Exception as e:
-        return json.dumps({"results": e.message})
+        return json.dumps({"results": str(e)})
 
 
 def export_all_tasks(request):

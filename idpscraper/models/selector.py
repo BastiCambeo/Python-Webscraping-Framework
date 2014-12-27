@@ -32,7 +32,7 @@ class Selector(models.Model):
     name = models.TextField()
     type = models.IntegerField(choices=TYPE_CHOICES)
     xpath = models.TextField()
-    regex = models.TextField(blank=True)
+    regex = models.TextField()
     is_key = models.BooleanField(default=False)
     task = models.ForeignKey('Task')
 
@@ -45,3 +45,8 @@ class Selector(models.Model):
 
     def cast(self, value):
         return Selector.CASTS[self.type](value)
+
+    def __repr__(self):
+        fields = ["task_id", "name", "type", "xpath", "regex", "is_key"]
+        fields = ", ".join(["%s=%s" % (f, repr(getattr(self, f))) for f in fields])
+        return "Selector(%s)" % fields

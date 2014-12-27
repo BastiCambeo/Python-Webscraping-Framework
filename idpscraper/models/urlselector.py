@@ -8,7 +8,7 @@ class UrlSelector(models.Model):
 
     url = models.TextField()
     task = models.ForeignKey('Task')
-    task_name = models.TextField()
+    selector_task = models.ForeignKey('Task', related_name='related_url_selectors')
     selector_name = models.TextField()
     selector_name2 = models.TextField()
 
@@ -28,7 +28,7 @@ class UrlSelector(models.Model):
             yield self.url
 
     def get_url_parameters(self, results: 'list[Result]'=None, limit=None) -> 'list[str]':
-        results = results or self.task_key.get().results
+        results = results or self.selector_task.results
 
         if limit:
             results = results[:limit]
@@ -36,3 +36,8 @@ class UrlSelector(models.Model):
         for result in results:
             if getattr(result, self.selector_name) is not None and getattr(result, self.selector_name2) is not None:
                 yield [getattr(result, self.selector_name), getattr(result, self.selector_name2)]
+
+    def __repr__(self):
+        fields = ["task_id", "url", "selector_task_id", "selector_name", "selector_name2"]
+        fields = ", ".join(["%s=%s" % (f, repr(getattr(self, f))) for f in fields])
+        return "UrlSelector(%s)" % fields

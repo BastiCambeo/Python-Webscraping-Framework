@@ -8,8 +8,6 @@
 {% block content %}
     <!-- Properties -->
     <form id="task_form">
-        <input type="hidden" name="task_name" value="{{ task.name }}">
-
         <div>
             <h3>URLs</h3>
 
@@ -20,16 +18,16 @@
                     <span class="advanced">
                         <select name="url_results_id[]" class="results_id" onchange="update_results_properties({{ forloop.counter0 }})">
                             {% for task in all_tasks %}
-                                <option {% if task.pk == url_selector.task_name %} selected {% endif %}>{{ task.name }}</option>
+                                <option {% if task.pk == url_selector.selector_task_id %} selected {% endif %}>{{ task.name }}</option>
                             {% endfor %}
                         </select>
                         <select name="url_selector_names1[]" class="results_properties1" style="width: 150px">
-                            {% for selector in url_selector.task.selectors %}
+                            {% for selector in url_selector.selector_task.selectors %}
                                 <option {% if selector.name == url_selector.selector_name %} selected {% endif %}>{{ selector.name }}</option>
                             {% endfor %}
                         </select>
                         <select name="url_selector_names2[]" class="results_properties2" style="width: 150px">
-                            {% for selector in url_selector.task.selectors %}
+                            {% for selector in url_selector.selector_task.selectors %}
                                 <option {% if selector.name == url_selector.selector_name2 %} selected {% endif %}>{{ selector.name }}</option>
                             {% endfor %}
                         </select>
