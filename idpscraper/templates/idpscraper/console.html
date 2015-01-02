@@ -4,7 +4,7 @@
 {% block h1 %}Console{% endblock %}
 
 {% block content %}
-<input type="text" id="command" class="input_long" value='Result.query(Result.task_key==ndb.Key(Task, "Fussball_Einsaetze")).count()'><br>
+<input type="text" id="command" class="input_long" value='len(Task.get("Fussball_Einsaetze").results.all())'><br>
 
 <button class="btn" onclick="console_eval($('#command').val())">Eval</button>
 {% endblock %}

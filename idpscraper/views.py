@@ -169,6 +169,6 @@ def put_tasks(request):
 
 def run_command(request):
     try:
-        return json.dumps({"results": repr(eval(request.vars.command))})
+        return HttpResponse(json.dumps({"results": repr(eval(request.POST["command"]))}), content_type="application/json")
     except Exception as e:
-        return json.dumps({"results": str(e)})
+        return HttpResponse(json.dumps(dict(results=str(e))), content_type="application/json")

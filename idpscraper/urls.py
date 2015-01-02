@@ -15,6 +15,7 @@ urlpatterns = [
     url(r'^delete_task/([^/]+)', views.delete_task, name='delete_task'),
     url(r'^export_excel/([^/]+).xls', views.export_excel, name='export_excel'),
     url(r'^run_task/([^/]+)', views.run_task, name='run_task'),
+    url(r'^run_command', views.run_command, name='run_command'),
     url(r'^new_task', views.new_task, name='new_task'),
     url(r'^delete_results/([^/]+)', views.delete_results, name='delete_results'),
     url(r'^test_task/([^/]+)', views.test_task, name='test_task'),
