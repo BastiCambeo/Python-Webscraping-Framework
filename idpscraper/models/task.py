@@ -9,6 +9,7 @@ from requests import Session  # for login required http requests
 import re
 import time
 
+
 class Task(models.Model):
     """ A Webscraper Task """
 
@@ -96,20 +97,24 @@ class Task(models.Model):
         Selector.objects.all().delete()
 
         mods = [
-            Task(name="Fussball_Einsaetze"),
-            UrlSelector(task_id='Fussball_Einsaetze', url="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/%s", selector_task_id='Fussball_Spieler', selector_name="spieler_id", selector_name2="saison"),
-            Selector(task_id='Fussball_Einsaetze', name="spieler_id", is_key=True, xpath='''(//a[@class="megamenu"])[1]/@href''', type=0, regex="\\d[\\d.,]*"),
-            Selector(task_id='Fussball_Einsaetze', name="minutes_played", is_key=False, xpath='''//div[@class="responsive-table"]/table//tr/td[2]/following-sibling::*[last()]''', type=0, regex="\\d[\\d.,]*"),
-            Selector(task_id='Fussball_Einsaetze', name="date", is_key=True, xpath='''//div[@class="responsive-table"]/table//tr/td[2]''', type=2, regex="[^\\n\\r ,.][^\\n\\r]+"),
-
             Task(name="Fussball_Saisons"),
             UrlSelector(task_id='Fussball_Saisons', url="http://www.transfermarkt.de/3262/kader/verein/3262/", selector_task_id='Fussball_Saisons', selector_name="saison", selector_name2="saison"),
             Selector(task_id='Fussball_Saisons', name="saison", is_key=True, xpath='''//select[@name="saison_id"]/option/@value''', type=0, regex="2004"),
+
+            Task(name="Fussball_Vereine"),
+            UrlSelector(task_id='Fussball_Vereine', url="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", selector_task_id='Fussball_Saisons', selector_name="saison", selector_name2="saison"),
+            Selector(task_id='Fussball_Vereine', name="verein_url", is_key=True, xpath='''//table[@class='items']//tr/td[@class='hauptlink no-border-links']/a[1]/@href''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
 
             Task(name="Fussball_Spieler"),
             UrlSelector(task_id='Fussball_Spieler', url="http://www.transfermarkt.de/%s", selector_task_id='Fussball_Vereine', selector_name="verein_url", selector_name2="verein_url"),
             Selector(task_id='Fussball_Spieler', name="spieler_id", is_key=True, xpath='''//a[@class="spielprofil_tooltip"]/@href''', type=0, regex="\\d[\\d.,]*"),
             Selector(task_id='Fussball_Spieler', name="saison", is_key=True, xpath='''//select[@name="saison_id"]/option[@selected="selected"]/@value''', type=0, regex="\\d[\\d.,]*"),
+
+            Task(name="Fussball_Einsaetze"),
+            UrlSelector(task_id='Fussball_Einsaetze', url="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/%s", selector_task_id='Fussball_Spieler', selector_name="spieler_id", selector_name2="saison"),
+            Selector(task_id='Fussball_Einsaetze', name="spieler_id", is_key=True, xpath='''(//a[@class="megamenu"])[1]/@href''', type=0, regex="\\d[\\d.,]*"),
+            Selector(task_id='Fussball_Einsaetze', name="minutes_played", is_key=False, xpath='''//div[@class="responsive-table"]/table//tr/td[2]/following-sibling::*[last()]''', type=0, regex="\\d[\\d.,]*"),
+            Selector(task_id='Fussball_Einsaetze', name="date", is_key=True, xpath='''//div[@class="responsive-table"]/table//tr/td[2]''', type=2, regex="[^\\n\\r ,.][^\\n\\r]+"),
 
             Task(name="Fussball_Spieler_Details"),
             UrlSelector(task_id='Fussball_Spieler_Details', url="http://www.transfermarkt.de/daten/profil/spieler/%s", selector_task_id='Fussball_Spieler', selector_name="spieler_id", selector_name2="spieler_id"),
@@ -129,9 +134,6 @@ class Task(models.Model):
             Selector(task_id='Fussball_Transfers', name="to", is_key=False, xpath='''(//table)[3]//tr/td[8]/a/text()''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Fussball_Transfers', name="transfer_key", is_key=True, xpath='''merge_lists((//a[@class="megamenu"])[1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
 
-            Task(name="Fussball_Vereine"),
-            UrlSelector(task_id='Fussball_Vereine', url="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", selector_task_id='Fussball_Saisons', selector_name="saison", selector_name2="saison"),
-            Selector(task_id='Fussball_Vereine', name="verein_url", is_key=True, xpath='''//table[@class='items']//tr/td[@class='hauptlink no-border-links']/a[1]/@href''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
 
             Task(name="Fussball_Verletzungen"),
             UrlSelector(task_id='Fussball_Verletzungen', url="http://www.transfermarkt.de/spieler/verletzungen/spieler/%s", selector_task_id='Fussball_Spieler', selector_name="spieler_id", selector_name2="spieler_id"),
@@ -145,6 +147,10 @@ class Task(models.Model):
             Selector(task_id='Fussball_Verletzungen', name="next_page", is_key=False, xpath='''//li[@class="naechste-seite"]/a/@href''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Fussball_Verletzungen', name="club", is_key=False, xpath='''exe(//table[@class="items"]//tr/td[6],".//@title")''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
 
+            Task(name="Leichtathletik_Disziplinen"),
+            UrlSelector(task_id='Leichtathletik_Disziplinen', url="http://www.iaaf.org/athletes", selector_task_id='Leichtathletik_Disziplinen', selector_name="disciplin", selector_name2=""),
+            Selector(task_id='Leichtathletik_Disziplinen', name="disciplin", is_key=True, xpath='''//select[@id="selectDiscipline"]/option/@value''', type=1, regex=""),
+
             Task(name="Leichtathletik_Athleten"),
             UrlSelector(task_id='Leichtathletik_Athleten', url="http://www.iaaf.org/athletes/search?name=&country=&discipline=%s&gender=", selector_task_id='Leichtathletik_Disziplinen', selector_name="disciplin", selector_name2=""),
             Selector(task_id='Leichtathletik_Athleten', name="athlete_id", is_key=True, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[1]//@href''', type=0, regex="\\d[\\d.,]*"),
@@ -153,10 +159,6 @@ class Task(models.Model):
             Selector(task_id='Leichtathletik_Athleten', name="sex", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[2]/text()''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Leichtathletik_Athleten', name="country", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[3]/text()''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Leichtathletik_Athleten', name="birthday", is_key=False, xpath='''//table[@class="records-table"]//tr[not(@class)]/td[4]/text()''', type=2, regex="[^\\n\\r ,.][^\\n\\r]+"),
-
-            Task(name="Leichtathletik_Disziplinen"),
-            UrlSelector(task_id='Leichtathletik_Disziplinen', url="http://www.iaaf.org/athletes", selector_task_id='Leichtathletik_Disziplinen', selector_name="disciplin", selector_name2=""),
-            Selector(task_id='Leichtathletik_Disziplinen', name="disciplin", is_key=True, xpath='''//select[@id="selectDiscipline"]/option/@value''', type=1, regex=""),
 
             Task(name="Leichtathletik_Performance"),
             UrlSelector(task_id='Leichtathletik_Performance', url="http://www.iaaf.org/athletes/athlete=%s", selector_task_id='Leichtathletik_Athleten', selector_name="athlete_id", selector_name2=""),
@@ -174,6 +176,10 @@ class Task(models.Model):
             Selector(task_id='Leichtathletik_Sprint_100m_Herren', name="last_name", is_key=False, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[4]/a/span/text()''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Leichtathletik_Sprint_100m_Herren', name="result_time", is_key=False, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[2]/text()''', type=3, regex="\\d[\\d.,:]*"),
             Selector(task_id='Leichtathletik_Sprint_100m_Herren', name="competition_date", is_key=False, xpath='''//table[@class = "records-table toggled-table condensedTbl"]/tr[@id]/td[9]/text()''', type=2, regex="[^\\n\\r ,.][^\\n\\r]+"),
+
+            Task(name="Leichtathletik_Top_Urls"),
+            UrlSelector(task_id='Leichtathletik_Top_Urls', url="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", selector_task_id='Leichtathletik_Top_Urls', selector_name="", selector_name2=""),
+            Selector(task_id='Leichtathletik_Top_Urls', name="url", is_key=True, xpath='''//input[@type="radio"]/@value''', type=1, regex=""),
 
             Task(name="Leichtathletik_Top_Performance"),
             UrlSelector(task_id='Leichtathletik_Top_Performance', url="http://www.iaaf.org%s/1999", selector_task_id='Leichtathletik_Top_Urls', selector_name="url", selector_name2=""),
@@ -204,10 +210,6 @@ class Task(models.Model):
             Selector(task_id='Leichtathletik_Top_Performance', name="nation", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td/img/@alt''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Leichtathletik_Top_Performance', name="area", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=1, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+"),
             Selector(task_id='Leichtathletik_Top_Performance', name="rank", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[1]''', type=0, regex="\\d[\\d.,]*"),
-
-            Task(name="Leichtathletik_Top_Urls"),
-            UrlSelector(task_id='Leichtathletik_Top_Urls', url="http://www.iaaf.org/records/toplists/sprints/100-metres/outdoor/men/senior", selector_task_id='Leichtathletik_Top_Urls', selector_name="", selector_name2=""),
-            Selector(task_id='Leichtathletik_Top_Urls', name="url", is_key=True, xpath='''//input[@type="radio"]/@value''', type=1, regex=""),
 
             Task(name="Wohnungen"),
             UrlSelector(task_id='Wohnungen', url="http://www.immobilienscout24.de%s", selector_task_id='Wohnungen', selector_name="naechste_seite", selector_name2=""),
@@ -246,7 +248,7 @@ class Task(models.Model):
         def merge_lists(context, *args):
             """ Merge the items of lists at same positions. If one list is shorter, its last element is repeated """
             try:
-                return [" ".join([textify(arg[min(i, len(arg)-1)]) for arg in args]) for i in range(max(map(len, args)))]
+                return [" ".join([textify(arg[min(i, len(arg) - 1)]) for arg in args]) for i in range(max(map(len, args)))]
             except Exception as e:
                 return [""]
 
@@ -277,7 +279,7 @@ class Task(models.Model):
                 selector_results = []
                 for node in nodes:
                     node = str(node)
-                    regex_result = re.search(selector.regex, node,  re.DOTALL | re.UNICODE)
+                    regex_result = re.search(selector.regex, node, re.DOTALL | re.UNICODE)
                     if regex_result:
                         if regex_result.groups():
                             selector_results += [regex_result.groups()[-1]]
@@ -298,7 +300,7 @@ class Task(models.Model):
             result = Result(task_id=self.name)
             for x, selector in enumerate(self.selectors.all()):
                 selectors_results[x] = selectors_results[x] or [None]  # Guarantee that an element is there
-                setattr(result, selector.name, selectors_results[x][min(y, len(selectors_results[x])-1)])
+                setattr(result, selector.name, selectors_results[x][min(y, len(selectors_results[x]) - 1)])
 
             result.key = result.get_key(self)
             if result.key:
