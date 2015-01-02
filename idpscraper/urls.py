@@ -18,6 +18,6 @@ urlpatterns = [
     url(r'^new_task', views.new_task, name='new_task'),
     url(r'^delete_results/([^/]+)', views.delete_results, name='delete_results'),
     url(r'^test_task/([^/]+)', views.test_task, name='test_task'),
-    url(r'^get_task/([^/]+)', views.get_task, name='get_task'),
+    url(r'^get_task_selectors/([^/]+)', views.get_task_selectors, name='get_task'),
     url(r'^test$', views.test, name='test'),
 ]

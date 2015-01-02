@@ -49,35 +49,6 @@ function run(name) {
 function export_excel(name) {
     window.location.href = "/idpscraper/export_excel/" + name + ".xls";
 }
-var cursor = "", has_next = true, data_blobs = [];
-function load_data(name, limit, load_all) {
-    var data = { name: name, cursor: cursor };
-    if (typeof limit !== "undefined") {
-        data["limit"] = limit;
-    }
-    if (typeof load_all === "undefined") {
-        load_all = false;
-    }
-    if (!has_next) {
-        saveAs(new Blob(data_blobs), "data.txt");
-        $.web2py.flash("All data sucessfully loaded");
-        return;
-    }
-    $.ajax({
-        type: "POST",
-        url: "/idpscraper/get_data",
-        data: data,
-        dataType: "json",
-        success: function (data) {
-            cursor = data.cursor;
-            has_next = data.has_next;
-            $.web2py.flash("Data is being prepared. This can take some time depending on the size of the database.");
-            data_blobs.push(data.results);
-            if (load_all)
-                load_data(name, limit, load_all);
-        }
-    });
-}
 function test(name) {
     save(name);
     $.ajax({
@@ -149,10 +120,10 @@ function new_task() {
         });
     }
 }
-function get_task(name, callback) {
+function get_task_selectors(name, callback) {
     /* When the results_id selection changes, the results_properties list must be updated */
     $.ajax({
-        url: "/idpscraper/get_task/" + name,
+        url: "/idpscraper/get_task_selectors/" + name,
         type: "GET",
         dataType: "json",
         success: callback // function(task)
@@ -160,10 +131,10 @@ function get_task(name, callback) {
 }
 function update_results_properties(url_number) {
     var task_name = $(".results_id").eq(url_number).val();
-    get_task(task_name, function (task) {
+    get_task_selectors(task_name, function (selectors) {
         $(".results_properties1").eq(url_number).empty();
         $(".results_properties2").eq(url_number).empty();
-        task.selectors.forEach(function (selector) {
+        selectors.forEach(function (selector) {
             $(".results_properties1").eq(url_number).append("<option>" + selector.name + "</option>");
             $(".results_properties2").eq(url_number).append("<option>" + selector.name + "</option>");
         });

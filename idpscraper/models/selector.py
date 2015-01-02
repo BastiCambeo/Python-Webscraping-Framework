@@ -31,7 +31,7 @@ class Selector(models.Model):
 
     task = models.ForeignKey('Task', related_name='selectors')
     name = models.TextField()
-    type = models.IntegerField(choices=TYPE_CHOICES)
+    type = models.IntegerField(choices=TYPE_CHOICES, default=STRING)
     xpath = models.TextField()
     regex = models.TextField()
     is_key = models.BooleanField(default=False)

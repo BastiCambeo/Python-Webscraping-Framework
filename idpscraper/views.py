@@ -123,6 +123,8 @@ def delete_task(request, name):
 def new_task(request):
     name = request.POST["name"]
     Task(name=name).save()
+    UrlSelector(task_id=name, selector_task_id=name).save()
+    Selector(task_id=name).save()
     return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 
@@ -154,11 +156,10 @@ def save_task(request, name):
     return HttpResponse(json.dumps(dict()), content_type="application/json")
 
 
-def get_task(request, name):
+def get_task_selectors(request, name):
     task = Task.get(name)
-    task.selectors = task.selectors.all()
-    task.url_selectors = task.url_selectors.all()
-    return HttpResponse(json.dumps(task, default=serialize.serialize), content_type="application/json")
+    selectors = list(task.selectors.all())
+    return HttpResponse(json.dumps(selectors, default=serialize.serialize), content_type="application/json")
 
 
 def put_tasks(request):
