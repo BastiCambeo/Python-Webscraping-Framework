@@ -15,7 +15,7 @@ def index(request):
 
 def task(request, name):
     task = Task.get(name)
-    data = task.as_table(task.results.all())
+    data = task.as_table(task.results.all()[:50])
     all_tasks = Task.objects.all()
     return render(request, 'idpscraper/task.html', dict(task=task, data=data, all_tasks=all_tasks, selector_choices=Selector.TYPE_CHOICES))
 
