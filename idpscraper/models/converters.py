@@ -57,7 +57,7 @@ def str2int(string: str) -> int:
 
 
 def _parse_date_german(aDateString):
-    """parse a date in dd.mm.yyyy TTT format"""
+    """parse a date in dd.mm.yyyy format"""
     # 01.01.2010
     _my_date_pattern = re.compile(r'(\d{,2})\.(\d{,2})\.(\d{4})')
 
@@ -66,7 +66,19 @@ def _parse_date_german(aDateString):
         return None
     day, month, year = m.groups()
     return int(year), int(month), int(day), 0,0,0,0,0,0
-feedparser.registerDateHandler(_parse_date_german)
+feedparser._date_handlers.append(_parse_date_german)
+
+def _parse_date_year_only(aDateString):
+    """parse a date in yyyy format"""
+    # 1968
+    _my_date_pattern = re.compile(r'(\d{4})')
+
+    m = _my_date_pattern.search(aDateString)
+    if m is None:
+        return None
+    day, month, year = 1, 1, m.groups()[0]
+    return int(year), int(month), int(day), 0,0,0,0,0,0
+feedparser._date_handlers.append(_parse_date_year_only)
 
 
 def str2datetime(string: str) -> datetime:
@@ -79,5 +91,9 @@ def str2datetime(string: str) -> datetime:
 
     >>> str2datetime("18 APR 1973")
     datetime.datetime(1973, 4, 18, 0, 0)
+
+    >>> str2datetime("1968")
+    datetime.datetime(1968, 1, 1, 0, 0)
     """
+
     return datetime(*(feedparser._parse_date(string)[:6]))
