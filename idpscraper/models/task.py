@@ -8,6 +8,7 @@ from lxml import html, etree  # xpath support
 from requests import Session  # for login required http requests
 import re
 import time
+import traceback
 
 
 class Task(models.Model):
@@ -65,7 +66,7 @@ class Task(models.Model):
         return self.run(limit=1, store=False)
 
     def export(self):
-        return ",\n".join([repr(m) for m in [self] + self.selectors.all() + self.url_selectors.all()])
+        return ",\n".join([repr(m) for m in [self] + list(self.selectors.all()) + list(self.url_selectors.all())])
 
     def export_to_excel(self):
         return Task.export_data_to_excel(data=self.as_table(self.results.all()))
@@ -146,6 +147,10 @@ class Task(models.Model):
             Selector(task_id='Fussball_Verletzungen', name="missed_games", is_key=False, xpath='''//table[@class="items"]//tr/td[6]/text()''', type=0, regex="\\d[\\d.,]*"),
             Selector(task_id='Fussball_Verletzungen', name="next_page", is_key=False, xpath='''//li[@class="naechste-seite"]/a/@href''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Fussball_Verletzungen', name="club", is_key=False, xpath='''exe(//table[@class="items"]//tr/td[6],".//@title")''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
+
+            Task(name='Leichtathletik_Saisons'),
+            Selector(task_id='Leichtathletik_Saisons', name='saison', type=0, xpath="id('selectyear')/option/@value", regex='\\d\\d\\d\\d', is_key=True),
+            UrlSelector(task_id='Leichtathletik_Saisons', url='http://www.iaaf.org/results', selector_task_id='Leichtathletik_Saisons', selector_name='', selector_name2=''),
 
             Task(name="Leichtathletik_Disziplinen"),
             UrlSelector(task_id='Leichtathletik_Disziplinen', url="http://www.iaaf.org/athletes", selector_task_id='Leichtathletik_Disziplinen', selector_name="disciplin", selector_name2=""),
@@ -238,8 +243,6 @@ class Task(models.Model):
         """
         Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression
 
-        >>> parse(html_src="<html><a> test </a></html>", selectors=[Selector(name="value", type=Selector.STRING, xpath="//text()", is_key=True)])
-        [<Result: {'value': 'test'}>]
         """
 
         def textify(node):
@@ -337,7 +340,7 @@ class Task(models.Model):
                 parsing = self.parse(html_src)
                 success = True
             except Exception as e:
-                logging.error(str(e))
+                traceback.print_exc()
                 time.sleep(5)
 
         return parsing
