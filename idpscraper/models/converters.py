@@ -3,6 +3,7 @@ __author__ = "Sebastian Hofstetter"
 from datetime import datetime
 import feedparser
 import re
+import logging
 
 
 def str2float(string: str) -> float:
@@ -96,4 +97,8 @@ def str2datetime(string: str) -> datetime:
     datetime.datetime(1968, 1, 1, 0, 0)
     """
 
-    return datetime(*(feedparser._parse_date(string)[:6]))
+    try:
+        return datetime(*(feedparser._parse_date(string)[:6]))
+    except:
+        logging.error("failed to parse %s as date" % repr(string))
+        raise

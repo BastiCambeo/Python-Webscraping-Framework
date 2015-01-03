@@ -135,7 +135,6 @@ class Task(models.Model):
             Selector(task_id='Fussball_Transfers', name="to", is_key=False, xpath='''(//table)[3]//tr/td[8]/a/text()''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Fussball_Transfers', name="transfer_key", is_key=True, xpath='''merge_lists((//a[@class="megamenu"])[1]/@href, (//table)[3]//tr/td[5]/a/text(), (//table)[3]//tr/td[8]/a/text())''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
 
-
             Task(name="Fussball_Verletzungen"),
             UrlSelector(task_id='Fussball_Verletzungen', url="http://www.transfermarkt.de/spieler/verletzungen/spieler/%s", selector_task_id='Fussball_Spieler', selector_name="spieler_id", selector_name2="spieler_id"),
             UrlSelector(task_id='Fussball_Verletzungen', url="http://www.transfermarkt.de%s", selector_task_id='Fussball_Verletzungen', selector_name="next_page", selector_name2="spieler_id"),
@@ -293,7 +292,7 @@ class Task(models.Model):
             else:
                 selector_results = nodes
 
-            selector_results = [selector.cast(data) for data in selector_results]  # cast to type
+            selector_results = [selector.cast(data) if data is not None else None for data in selector_results]  # cast to type
 
             selectors_results.append(selector_results)
 

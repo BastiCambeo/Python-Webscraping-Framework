@@ -35,13 +35,13 @@ def relative_age(request):
     for month in ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]:
         birthdays[month] = 0
 
-    for athlete in Result.query(ancestor=ndb.Key(Task, "Leichtathletik_Athleten")).fetch(10000):
+    for athlete in Task.get("Leichtathletik_Top_Performance").results.all():
         try:
             if not (athlete.birthday.day == 1 and athlete.birthday.month == 1):  # 1.1. is a dummy date for athletes where the exact birthday is unknown
                 birthdays[athlete.birthday.strftime("%B")] += 1
         except:
             pass
-    return dict(birthdays=birthdays)
+    return render(request, 'idpscraper/relative_age.html', dict(birthdays=birthdays, athlete_count=sum(birthdays.values())))
 
 
 def injuries_in_player_seasons(request):
