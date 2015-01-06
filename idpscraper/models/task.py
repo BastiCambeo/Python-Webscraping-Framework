@@ -9,6 +9,7 @@ from requests import Session  # for login required http requests
 import re
 import time
 import traceback
+import datetime
 
 
 class Task(models.Model):
@@ -82,7 +83,18 @@ class Task(models.Model):
         # write #
         for x, row in enumerate(data):
             for y, column in enumerate(row):
-                ws.write(x, y, column)
+
+                cell_type = xlwt.easyxf()
+                if isinstance(column, datetime.datetime):
+                    cell_type = xlwt.easyxf(num_format_str="DD.MM.YYYY")
+                elif isinstance(column, int):
+                    cell_type = xlwt.easyxf(num_format_str="0")
+                elif isinstance(column, float):
+                    cell_type = xlwt.easyxf(num_format_str="0.00")
+                elif isinstance(column, str):
+                    cell_type = xlwt.easyxf(num_format_str="@")
+
+                ws.write(x, y, column, cell_type)
 
         # save #
         f = io.BytesIO()
@@ -100,7 +112,7 @@ class Task(models.Model):
         mods = [
             Task(name="Fussball_Saisons"),
             UrlSelector(task_id='Fussball_Saisons', url="http://www.transfermarkt.de/3262/kader/verein/3262/", selector_task_id='Fussball_Saisons', selector_name="saison", selector_name2="saison"),
-            Selector(task_id='Fussball_Saisons', name="saison", is_key=True, xpath='''//select[@name="saison_id"]/option/@value''', type=0, regex="2004"),
+            Selector(task_id='Fussball_Saisons', name="saison", is_key=True, xpath='''//select[@name="saison_id"]/option/@value''', type=0, regex="200[89]|201\d"),
 
             Task(name="Fussball_Vereine"),
             UrlSelector(task_id='Fussball_Vereine', url="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", selector_task_id='Fussball_Saisons', selector_name="saison", selector_name2="saison"),
@@ -122,9 +134,8 @@ class Task(models.Model):
             Selector(task_id='Fussball_Spieler_Details', name="spieler_id", is_key=True, xpath='''//link[@rel="canonical"]/@href''', type=0, regex="\\d[\\d.,]*"),
             Selector(task_id='Fussball_Spieler_Details', name="name", is_key=False, xpath='''//div[@class="spielername-profil"]/text()''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
             Selector(task_id='Fussball_Spieler_Details', name="position", is_key=False, xpath='''//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
-            Selector(task_id='Fussball_Spieler_Details', name="max_value", is_key=False, xpath='''//table[@class="auflistung mt10"]/tr[3]/td/text()''', type=3, regex="\\d[\\d.,:]*"),
             Selector(task_id='Fussball_Spieler_Details', name="birthday", is_key=False, xpath='''//td[preceding-sibling::th/text()="Geburtsdatum:"]/a/text()''', type=2, regex="[^\\n\\r ,.][^\\n\\r]+"),
-            Selector(task_id='Fussball_Spieler_Details', name="size", is_key=False, xpath='''//td[preceding-sibling::th/text()="GrÃ¶ÃŸe:"]//text()''', type=3, regex="\\d[\\d.,:]*"),
+            Selector(task_id='Fussball_Spieler_Details', name="size", is_key=False, xpath='''//td[preceding-sibling::th/text()="Größe:"]//text()''', type=3, regex="\\d[\\d.,:]*"),
             Selector(task_id='Fussball_Spieler_Details', name="retire_date", is_key=False, xpath='''//table[@class="profilheader"]//td[preceding-sibling::*[.//@title="Karriereende"]]''', type=2, regex="[^\\n\\r ,.][^\\n\\r]+"),
 
             Task(name="Fussball_Transfers"),

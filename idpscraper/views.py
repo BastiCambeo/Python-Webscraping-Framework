@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.core.urlresolvers import reverse
 import json
 import traceback
+import datetime
 from idpscraper.models.template import render as render2
 
 
@@ -25,7 +26,12 @@ def console(request):
 
 
 def test(request):
-    return HttpResponse(render2(filename="idpscraper/templates/idpscraper/test.html"))
+    missing = [42787, 32711, 32713, 24463, 3568, 58864, 24465, 32719, 54964, 93584, 28150, 695, 45464, 72792, 162652, 42942, 68574]
+    task = Task.get("Fussball_Spieler_Details")
+    results = task.results.all()
+    results = [result for result in results if result.spieler_id in missing]
+    results = [Result(results=dict(spieler_id=1, name="name", position="position", birthday=datetime.datetime.now(), size=2.2, retire_date=datetime.datetime.now()))]
+    return HttpResponse(Task.export_data_to_excel(task.as_table(results)), content_type="application/vnd.ms-excel")
 
 
 def relative_age(request):
@@ -35,13 +41,33 @@ def relative_age(request):
     for month in ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]:
         birthdays[month] = 0
 
-    for athlete in Task.get("Leichtathletik_Top_Performance").results.all():
+    athletes = {athlete.athlete_id: athlete for athlete in Task.get("Leichtathletik_Top_Performance").results.all()}
+
+    for athlete in athletes.values():
         try:
             if not (athlete.birthday.day == 1 and athlete.birthday.month == 1):  # 1.1. is a dummy date for athletes where the exact birthday is unknown
                 birthdays[athlete.birthday.strftime("%B")] += 1
         except:
             pass
-    return render(request, 'idpscraper/relative_age.html', dict(birthdays=birthdays, athlete_count=sum(birthdays.values())))
+    return render(request, 'idpscraper/relative_age.html', dict(birthdays=birthdays, considered_athlete_count=sum(birthdays.values()), athlete_count=len(athletes)))
+
+
+def relative_age2(request):
+    from collections import OrderedDict
+
+    birthdays = OrderedDict()
+    for month in ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]:
+        birthdays[month] = 0
+
+    athletes = {athlete.spieler_id: athlete for athlete in Task.get("Fussball_Spieler_Details").results.all()}
+
+    for athlete in athletes.values():
+        try:
+            # 1.1. is not a dummy date for players, because of the high quality of the database
+            birthdays[athlete.birthday.strftime("%B")] += 1
+        except:
+            pass
+    return render(request, 'idpscraper/relative_age.html', dict(birthdays=birthdays, considered_athlete_count=sum(birthdays.values()), athlete_count=len(athletes)))
 
 
 def injuries_in_player_seasons(request):

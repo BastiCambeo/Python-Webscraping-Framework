@@ -23,7 +23,7 @@
                         {% endfor %}
                     ]
             );
-            var options = {'title': '{{athlete_count}} Athletes overall'};
+            var options = {'title': '{{ considered_athlete_count }} athletes considered of {{ athlete_count }} athletes overall'};
             var cards_chart = new google.visualization.PieChart(document.getElementById('cards_status_piechart'));
             cards_chart.draw(data, options);
         }
