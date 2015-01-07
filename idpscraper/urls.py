@@ -22,4 +22,6 @@ urlpatterns = [
     url(r'^test_task/([^/]+)', views.test_task, name='test_task'),
     url(r'^get_task_selectors/([^/]+)', views.get_task_selectors, name='get_task'),
     url(r'^test$', views.test, name='test'),
+    url(r'^injuries_in_player_seasons', views.injuries_in_player_seasons, name='injuries_in_player_seasons'),
+    url(r'^injuries_in_action', views.injuries_in_action, name='injuries_in_action'),
 ]

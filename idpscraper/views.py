@@ -4,6 +4,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from idpscraper.models import Task, Selector, UrlSelector, Result, serialize
 from django.contrib import messages
 from django.core.urlresolvers import reverse
+from collections import defaultdict
 import json
 import traceback
 import datetime
@@ -72,37 +73,40 @@ def relative_age2(request):
 
 def injuries_in_player_seasons(request):
     """ Remove all injuries that are not in the season in which a player played """
-    injuries = Task.get("Fussball_Verletzungen").get_results()  # get all injuries
-    del_injury_keys = []
-    put_injuries = []
-    players = set("%s %s" % (player.spieler_id, player.saison) for player in Task.get("Fussball_Spieler").get_results())  # get all players with seasons
+    Selector(task_id="Football_Injuries", name="season", type=Selector.INTEGER).save()
+
+    injuries = Task.get("Football_Injuries").results.all()  # get all injuries
+    players = set((player.player_id, player.season) for player in Task.get("Football_Players").results.all())  # get all players with seasons
     for injury in injuries:
-        injury.season = (getattr(injury, "from") - timedelta(weeks=26)).year
-        if "%s %s" % (injury.spieler_id, injury.season) in players:
-            put_injuries.append(injury)
+        injury.season = (injury.begin - datetime.timedelta(weeks=26)).year
+        if (injury.player_id, injury.season) in players:
+            injury.save()
         else:
-            del_injury_keys.append(injury.key)
-    ndb.put_multi(put_injuries)
-    ndb.delete_multi(del_injury_keys)
+            injury.delete()
+    return HttpResponse("finished")
 
 
 def injuries_in_action(request):
-    """ Determine if an injury occured in action:= a match was scheduled for the same day or the day before """
-    injuries = Result.query(Result.task_key == ndb.Key(Task, "Fussball_Verletzungen")).fetch()
-    matches_same_day = [bool(match) for match in ndb.get_multi([ndb.Key("Result", "Fussball_Einsaetze%s %s" % (injury.spieler_id, getattr(injury, "from"))) for injury in injuries])]
-    matches_day_before = [bool(match) for match in ndb.get_multi([ndb.Key("Result", "Fussball_Einsaetze%s %s" % (injury.spieler_id, getattr(injury, "from") + timedelta(days=-1))) for injury in injuries])]
-    put_injuries = []
-    for i in range(len(injuries)):
-        if matches_same_day[i] or matches_day_before[i]:
-            injuries[i].in_action = 1
-            put_injuries.append(injuries[i])
+    """ Determine if an injury occured in action:= the injury ocurred on a match day, or the day after """
+    Selector(task_id="Football_Injuries", name="in_action", type=Selector.INTEGER).save()
 
-    ndb.put_multi(put_injuries)
-    return "%s %s" % (any(matches_same_day), any(matches_day_before))
+    injuries = Task.get("Football_Injuries").results.all()  # get all injuries
+    matches = defaultdict(lambda:[])
+    for match in Task.get("Football_Matches").results.all():
+        matches[match.player_id].append(match)
+    for injury in injuries:
+        injury.in_action = 0
+        for match in matches[injury.player_id]:
+            if match.date <= injury.begin <= match.date + datetime.timedelta(days=1):
+                injury.in_action = 1
+                break
+        injury.save()
+
+    return HttpResponse("finished")
 
 
 def injuries_per_day(request):
-    return repr([dict(id=injury.spieler_id, begin=getattr(injury, "from"), end=injury.to) for injury in Result.query(Result.task_key == ndb.Key(Task, "Fussball_Verletzungen")).fetch() if injury.to])
+    return repr([dict(id=injury.player_id, begin=injury.begin, end=injury.end) for injury in Task.get("Fussball_Verletzungen").results.all() if injury.begin])
 
 
 def test_task(request, name):
