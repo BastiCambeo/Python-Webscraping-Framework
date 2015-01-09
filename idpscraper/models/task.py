@@ -74,34 +74,31 @@ class Task(models.Model):
 
     @staticmethod
     def export_data_to_excel(data):
-        import xlwt  # Excel export support
+        import xlsxwriter  # Excel export support
         import io  # for files in memory
 
-        w = xlwt.Workbook()
-        ws = w.add_sheet("data")
+        output = io.BytesIO()
+        w = xlsxwriter.Workbook(output, dict(in_memory=True))
+        ws = w.add_worksheet("data")
+        ws.set_column('A:Z', 25)  # set more appriate width
+
+        cell_types = {
+            repr(type(None)): w.add_format(),
+            repr(datetime.datetime): w.add_format(dict(num_format="DD.MM.YYYY")),
+            repr(int): w.add_format(dict(num_format="0")),
+            repr(float): w.add_format(dict(num_format="0.00")),
+            repr(str): w.add_format(dict(num_format="@")),
+        }
 
         # write #
         for x, row in enumerate(data):
             for y, column in enumerate(row):
-
-                cell_type = xlwt.easyxf()
-                if isinstance(column, datetime.datetime):
-                    cell_type = xlwt.easyxf(num_format_str="DD.MM.YYYY")
-                elif isinstance(column, int):
-                    cell_type = xlwt.easyxf(num_format_str="0")
-                elif isinstance(column, float):
-                    cell_type = xlwt.easyxf(num_format_str="0.00")
-                elif isinstance(column, str):
-                    cell_type = xlwt.easyxf(num_format_str="@")
-
-                ws.write(x, y, column, cell_type)
+                ws.write(x, y, column, cell_types[repr(type(column))])
 
         # save #
-        f = io.BytesIO()
-        w.save(f)
-        del w, ws
-        f.seek(0)
-        return f.read()
+        w.close()
+        output.seek(0)
+        return output.read()
 
     @staticmethod
     def example_tasks() -> 'list[Task]':
