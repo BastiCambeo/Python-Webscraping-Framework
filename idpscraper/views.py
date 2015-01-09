@@ -74,7 +74,7 @@ def relative_age2(request):
 
 def injuries_in_player_seasons(request):
     """ Remove all injuries that are not in the season in which a player played """
-    Selector.objects.filter(name="season").delete()
+    Selector.objects.filter(task_id="Football_Injuries", name="season").delete()
     Selector(task_id="Football_Injuries", name="season", type=Selector.INTEGER).save()
 
     injuries = Task.get("Football_Injuries").results.all()  # get all injuries
@@ -90,7 +90,7 @@ def injuries_in_player_seasons(request):
 
 def injuries_in_action(request):
     """ Determine if an injury occured in action:= the injury ocurred on a match day, or the day after """
-    Selector.objects.filter(name="in_action").delete()
+    Selector.objects.filter(task_id="Football_Injuries", name="in_action").delete()
     Selector(task_id="Football_Injuries", name="in_action", type=Selector.INTEGER).save()
 
     injuries = Task.get("Football_Injuries").results.all()  # get all injuries
@@ -109,10 +109,10 @@ def injuries_in_action(request):
 
 
 def injuries_synonymes(request):
-    Selector.objects.filter(name="preceding_injury_date").delete()
-    Selector.objects.filter(name="following_injury_date").delete()
-    Selector.objects.filter(name="end_date_estimated").delete()
-    Selector.objects.filter(name="preceding_injury_in_last_year").delete()
+    Selector.objects.filter(task_id="Football_Injuries", name="preceding_injury_date").delete()
+    Selector.objects.filter(task_id="Football_Injuries", name="following_injury_date").delete()
+    Selector.objects.filter(task_id="Football_Injuries", name="end_date_estimated").delete()
+    Selector.objects.filter(task_id="Football_Injuries", name="preceding_injury_in_last_year").delete()
     Selector(task_id="Football_Injuries", name="preceding_injury_date", type=Selector.DATETIME).save()
     Selector(task_id="Football_Injuries", name="following_injury_date", type=Selector.DATETIME).save()
     Selector(task_id="Football_Injuries", name="end_date_estimated", type=Selector.INTEGER).save()
@@ -256,9 +256,8 @@ def injuries_synonymes(request):
                     injury1.following_injury_date = injury2.begin
                     injury2.preceding_injury_date = injury1.begin
                     injury2.preceding_injury_in_last_year = int((injury2.begin - injury2.preceding_injury_date).days < 365)
-                    injury1.save()
-                    injury2.save()
                     break
+            injury1.save()
 
     return HttpResponse("finished")
 

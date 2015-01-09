@@ -109,7 +109,7 @@ class Task(models.Model):
         mods = [
             Task(name="Football_Seasons"),
             UrlSelector(task_id='Football_Seasons', url="http://www.transfermarkt.de/3262/kader/verein/3262/", selector_task_id='Football_Seasons', selector_name="season", selector_name2="season"),
-            Selector(task_id='Football_Seasons', name="season", is_key=True, xpath='''//select[@name="saison_id"]/option/@value''', type=0, regex="200[89]|201\d"),
+            Selector(task_id='Football_Seasons', name="season", is_key=True, xpath='''//select[@name="saison_id"]/option/@value''', type=0, regex="200[89]|201\\d"),
 
             Task(name="Football_Clubs"),
             UrlSelector(task_id='Football_Clubs', url="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", selector_task_id='Football_Seasons', selector_name="season", selector_name2="season"),
