@@ -27,12 +27,13 @@ def console(request):
 
 
 def test(request):
-    missing = [42787, 32711, 32713, 24463, 3568, 58864, 24465, 32719, 54964, 93584, 28150, 695, 45464, 72792, 162652, 42942, 68574]
-    task = Task.get("Fussball_Spieler_Details")
+    #  missing = [42787, 32711, 32713, 24463, 3568, 58864, 24465, 32719, 54964, 93584, 28150, 695, 45464, 72792, 162652, 42942, 68574]
+    missing = [93584, 72792, 68574, 54964, 42787, 32719, 32713, 24465]
+    task = Task.get("Football_Player_Details")
     results = task.results.all()
-    results = [result for result in results if result.spieler_id in missing]
-    results = [Result(results=dict(spieler_id=1, name="name", position="position", birthday=datetime.datetime.now(), size=2.2, retire_date=datetime.datetime.now()))]
-    return HttpResponse(Task.export_data_to_excel(task.as_table(results)), content_type="application/vnd.ms-excel")
+    results = [result for result in results if result.player_id in missing]
+    #  results = [Result(results=dict(player_id=1, name="name", position="position", birthday=datetime.datetime.now(), size=2.2, retire_date=datetime.datetime.now()))]
+    return HttpResponse(Task.export_data_to_excel(task.as_table(results)), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 def relative_age(request):
@@ -73,6 +74,7 @@ def relative_age2(request):
 
 def injuries_in_player_seasons(request):
     """ Remove all injuries that are not in the season in which a player played """
+    Selector.objects.filter(name="season").delete()
     Selector(task_id="Football_Injuries", name="season", type=Selector.INTEGER).save()
 
     injuries = Task.get("Football_Injuries").results.all()  # get all injuries
@@ -88,19 +90,175 @@ def injuries_in_player_seasons(request):
 
 def injuries_in_action(request):
     """ Determine if an injury occured in action:= the injury ocurred on a match day, or the day after """
+    Selector.objects.filter(name="in_action").delete()
     Selector(task_id="Football_Injuries", name="in_action", type=Selector.INTEGER).save()
 
     injuries = Task.get("Football_Injuries").results.all()  # get all injuries
-    matches = defaultdict(lambda:[])
+    matches = defaultdict(lambda: [])
     for match in Task.get("Football_Matches").results.all():
         matches[match.player_id].append(match)
     for injury in injuries:
         injury.in_action = 0
         for match in matches[injury.player_id]:
-            if match.date <= injury.begin <= match.date + datetime.timedelta(days=1):
+            if match.date <= injury.begin <= match.date + datetime.timedelta(days=1) and match.minutes_played:
                 injury.in_action = 1
                 break
         injury.save()
+
+    return HttpResponse("finished")
+
+
+def injuries_synonymes(request):
+    Selector.objects.filter(name="preceding_injury_date").delete()
+    Selector.objects.filter(name="following_injury_date").delete()
+    Selector.objects.filter(name="end_date_estimated").delete()
+    Selector.objects.filter(name="preceding_injury_in_last_year").delete()
+    Selector(task_id="Football_Injuries", name="preceding_injury_date", type=Selector.DATETIME).save()
+    Selector(task_id="Football_Injuries", name="following_injury_date", type=Selector.DATETIME).save()
+    Selector(task_id="Football_Injuries", name="end_date_estimated", type=Selector.INTEGER).save()
+    Selector(task_id="Football_Injuries", name="preceding_injury_in_last_year", type=Selector.INTEGER).save()
+
+    synonymes = """
+    Außenbandanriss
+    Außenbandriss
+    Außenbandprobleme
+
+    Außenbandriss Knie
+    Außenbandanriss Knie
+
+    Außenbandanriss Sprunggelenk
+    Außenbandriss Sprunggelenk
+
+    Bänderanriss
+    Bänderriss
+    Bänderdehnung
+    Bänderverletzung
+
+    Bänderanriss Knie
+    Bänderriss Knie
+
+    Bänderanriss Sprunggelenk
+    Bänderriss Sprunggelenk
+    Bänderriss in der Fußwurzel
+
+    Innenbandabriss
+    Innenbandanriss
+    Innenbandriss
+    Innenbandverletzung
+    Innenbandzerrung
+
+    Innenbandanriss Knie
+    Innenbanddehnung Knie
+    Innenbandriss Knie
+
+    Innenbandanriss Sprunggelenk
+    Innenbandriss Sprunggelenk
+
+    Kreuzbandanriss
+    Kreuzbanddehnung
+    Kreuzbandriss
+    Kreuzbandzerrung
+
+    Seitenbandanriss Knie
+    Seitenbandriss Knie
+
+
+    Seitenbandanriss Sprunggelenk
+    Seitenbandriss Sprunggelenk
+
+    Seitenbandriss
+    Seitenband-Verletzung
+
+    Syndesmosebandanriss
+    Syndesmosebandriss
+
+
+    Außenmeniskuseinriss
+    Meniskuseinriss
+    Meniskusreizung
+    Meniskusriss
+    Meniskusschaden
+    Meniskusverletzung
+
+    Kapselriss
+    Kapselverletzung
+
+    Adduktorenabriss
+    Adduktorenbeschwerden
+    Adduktorenverletzung
+
+    Leistenprobleme
+    Leistenverletzung
+    Leistenzerrung
+
+    Muskelbündelriss
+    Muskelermüdung
+    Muskelfasereinriss
+    Muskelfaserriss
+    Muskelquetschung
+    Muskelriss
+    Muskelteilabriss
+    Muskelverhärtung
+    Muskelverletzung
+    Muskelzerrung
+    muskuläre Probleme
+
+    Oberschenkelmuskelriss
+    Oberschenkelprobleme
+    Oberschenkelverletzung
+    Oberschenkelzerrung
+
+    Wadenmuskelriss
+    Wadenzerrung
+
+    Achillessehnenanriss
+    Achillessehnenprobleme
+    Achillesversenprobleme
+    Achillessehnenreizung
+    Achillessehnenriss
+
+    Sehnenanriss
+    Sehnenentzündung
+    Sehnenreizung
+    Sehnenriss
+
+    Patellarsehnenanriss
+    Patellarsehnenprobleme
+    Patellarsehnenreizung
+    Patellarsehnenriss
+    """.split("\n")
+
+    # Group synonyme injury descriptions #
+    grouped_injuries = dict()
+    group = 0
+    for description in synonymes:
+        description = description.strip().lower()
+        if not description:
+            group += 1
+        else:
+            grouped_injuries[description] = group
+
+    # caluclate preceding and following injury date columns #
+    injuries_by_player = defaultdict(lambda: [])
+    for injury in sorted(Task.get("Football_Injuries").results.all(), key=lambda i: i.begin):  # get all injuries sorted by begin
+        injury.following_injury_date = None
+        injury.preceding_injury_date = None
+        injury.end_date_estimated = int(not injury.end or injury.end >= datetime.datetime.now())
+        injury.preceding_injury_in_last_year = 0  # := False
+        injuries_by_player[injury.player_id].append(injury)
+
+    for player_id, injuries in injuries_by_player.items():
+        for i, injury1 in enumerate(injuries):
+            for injury2 in injuries[i+1:]:
+                if grouped_injuries.get(injury1.description.strip().lower(), injury1.description.strip().lower()) == \
+                   grouped_injuries.get(injury2.description.strip().lower(), injury2.description.strip().lower()):
+                    # first following similar injury found #
+                    injury1.following_injury_date = injury2.begin
+                    injury2.preceding_injury_date = injury1.begin
+                    injury2.preceding_injury_in_last_year = int((injury2.begin - injury2.preceding_injury_date).days < 365)
+                    injury1.save()
+                    injury2.save()
+                    break
 
     return HttpResponse("finished")
 
@@ -137,7 +295,7 @@ def delete_results(request, name):
 
 def export_excel(request, name):
     task = Task.get(name)
-    return HttpResponse(task.export_to_excel(), content_type="application/vnd.ms-excel")
+    return HttpResponse(task.export_to_excel(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 def export_task(request, name):

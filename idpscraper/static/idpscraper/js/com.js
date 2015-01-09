@@ -47,7 +47,7 @@ function run(name) {
     });
 }
 function export_excel(name) {
-    window.location.href = "/idpscraper/export_excel/" + name + ".xls";
+    window.location.href = "/idpscraper/export_excel/" + name + ".xlsx";
 }
 function test(name) {
     save(name);
