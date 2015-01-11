@@ -73,18 +73,32 @@ def relative_age2(request):
 
 
 def injuries_in_player_seasons(request):
-    """ Remove all injuries that are not in the season in which a player played """
+    """ Remove all injuries and matches that are not in the season in which a player played """
     Selector.objects.filter(task_id="Football_Injuries", name="season").delete()
     Selector(task_id="Football_Injuries", name="season", type=Selector.INTEGER).save()
+    Selector.objects.filter(task_id="Football_Matches", name="season").delete()
+    Selector(task_id="Football_Matches", name="season", type=Selector.INTEGER).save()
 
     injuries = Task.get("Football_Injuries").results.all()  # get all injuries
+    matches = Task.get("Football_Matches").results.all()  # get all matches
     players = set((player.player_id, player.season) for player in Task.get("Football_Players").results.all())  # get all players with seasons
+
+    # update injuries #
     for injury in injuries:
         injury.season = (injury.begin - datetime.timedelta(weeks=26)).year
         if (injury.player_id, injury.season) in players:
             injury.save()
         else:
             injury.delete()
+
+    # update matches #
+    for match in matches:
+        match.season = (match.date - datetime.timedelta(weeks=26)).year
+        if (match.player_id, match.season) in players:
+            match.save()
+        else:
+            match.delete()
+
     return HttpResponse("finished")
 
 
