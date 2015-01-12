@@ -1,3 +1,4 @@
+""" This file links the views to their urls """
 __author__ = 'Sebastian Hofstetter'
 
 from django.conf.urls import url

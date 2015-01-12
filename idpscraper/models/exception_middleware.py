@@ -1,3 +1,4 @@
+""" Hooks into django and prints exceptions directly to the console """
 __author__ = 'Sebastian Hofstetter'
 
 import logging

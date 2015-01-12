@@ -1,3 +1,4 @@
+""" The model for a task's data-selector """
 __author__ = 'Sebastian Hofstetter'
 
 from idpscraper.models import converters
@@ -44,6 +45,7 @@ class Selector(models.Model):
         return self.name
 
     def cast(self, value):
+        """ Cast a string to the selector's datamodel """
         return Selector.CASTS[self.type](value)
 
     def __repr__(self):

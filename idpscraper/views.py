@@ -1,3 +1,4 @@
+""" This file contains webscraper specific views """
 from django.shortcuts import render
 from django.http import HttpResponseRedirect, HttpResponse
 from idpscraper.models import Task, Selector, UrlSelector, Result, serialize

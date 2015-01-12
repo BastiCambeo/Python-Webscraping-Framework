@@ -1,3 +1,4 @@
+""" General model for a webscraping task """
 __author__ = 'Sebastian Hofstetter'
 
 import itertools
@@ -19,25 +20,35 @@ class Task(models.Model):
 
     @property
     def recursive_url_selectors(self):
+        """ Returns all url_selectors that contain a reference to the own task """
         return [url_selector for url_selector in self.url_selectors.all() if url_selector.has_dynamic_url and url_selector.selector_task_id == self.pk]
 
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        fields = ["name"]
+        fields = ", ".join(["%s=%s" % (f, repr(getattr(self, f))) for f in fields])
+        return "Task(%s)" % fields
+
     def get_urls(self, results=None, limit=None):
+        """ Return all (possibly dynamic) urls related to the task """
         return itertools.chain(*[url_selector.get_urls(results=results, limit=limit) for url_selector in self.url_selectors.all()])  # Keep generators intact!
 
     @staticmethod
     def get(name):
+        """ Fetch a task by name """
         return Task.objects.get(pk=name)
 
     def as_table(self, results):
+        """ Prepare a set of results in a table like format, where the first row states the columns' titles """
         yield tuple(selector.name for selector in self.selectors.all())
 
         for result in results:
             yield tuple(getattr(result, selector.name) if hasattr(result, selector.name) else None for selector in self.selectors.all())
 
     def run(self, limit=None, store=True) -> 'list[Result]':
+        """ Execute a task """
         urls = set(self.get_urls(limit=limit))
         visited_urls = set()
         all_results = []
@@ -64,16 +75,20 @@ class Task(models.Model):
         return all_results
 
     def test(self):
+        """ Execute a task without storing the results in the database """
         return self.run(limit=1, store=False)
 
     def export(self):
+        """ Return the python representation of the task """
         return ",\n".join([repr(m) for m in [self] + list(self.selectors.all()) + list(self.url_selectors.all())])
 
     def export_to_excel(self):
+        """ Return the binary excel data of the task's results """
         return Task.export_data_to_excel(data=self.as_table(self.results.all()))
 
     @staticmethod
     def export_data_to_excel(data):
+        """ Return the binary excel data of the given data """
         import xlsxwriter  # Excel export support
         import io  # for files in memory
 
@@ -100,18 +115,10 @@ class Task(models.Model):
         output.seek(0)
         return output.read()
 
-
-    def __repr__(self):
-        fields = ["name"]
-        fields = ", ".join(["%s=%s" % (f, repr(getattr(self, f))) for f in fields])
-        return "Task(%s)" % fields
-
     def parse(self, html_src: str) -> 'list[Result]':
-        """
-        Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression
+        """ Parses an html document for a given XPath expression. Any resulting node can optionally be filtered against a regular expression """
 
-        """
-
+        # In the following some xpath extension functions are introduced. They can be used in the xpath fields of a task's selectors #
         def textify(node):
             return (str(node.text) if hasattr(node, "text") else str(node)).strip()
 
@@ -179,24 +186,18 @@ class Task(models.Model):
         return results
 
     def login(self, url: str, user: str, password: str) -> Session:
-        """
-        Returns the session that is yielded by the login
-
-        """
+        """ Returns the session that is yielded by the login """
 
         session = Session()
         inputs = self.http_request(url, session=session)
-        inputs[0].value = user  # TODO: more intelligent search for correct user and password field in form
+        inputs[0].value = user  # TODO: more intelligent search for correct user and password field in form. Currently just the first two input fields are taken.
         inputs[1].value = password
         data = {input.name: input.value for input in inputs}
         session.post(url, data)
         return session
 
     def http_request(self, url: str, session: Session=None) -> 'list[Result]':
-        """
-        Returns the response of an http get-request to a given url
-
-        """
+        """ Returns the response of an http get-request to a given url """
         success = False
 
         while not success:

@@ -1,3 +1,4 @@
+""" This file is extracted and adapted from the web2py framework. It is only required for the web2py templating language (not currently in use) """
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 

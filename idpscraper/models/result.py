@@ -1,3 +1,4 @@
+""" The model for a task's result """
 __author__ = 'Sebastian Hofstetter'
 
 from django.db import models

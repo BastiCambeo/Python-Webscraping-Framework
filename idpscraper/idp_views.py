@@ -1,4 +1,4 @@
-# This file contains idp specific views and calculations
+""" This file contains idp specific views and calculations """
 
 from django.shortcuts import render
 from django.http import HttpResponseRedirect, HttpResponse
