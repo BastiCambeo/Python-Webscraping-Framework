@@ -89,16 +89,24 @@ def injuries_in_player_seasons(request):
 def injuries_in_action(request):
     """ Determine if an injury occured in action:= the injury ocurred on a match day, or the day after """
     Selector.objects.update_or_create(task_id="Football_Injuries", name="in_action", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id="Football_Injuries", name="match_date", type=Selector.DATETIME)
+    Selector.objects.update_or_create(task_id="Football_Matches", name="in_action", type=Selector.INTEGER)
 
     injuries = Task.get("Football_Injuries").results.all()  # get all injuries
     matches = defaultdict(lambda: [])
     for match in Task.get("Football_Matches").results.all():
         matches[match.player_id].append(match)
+        match.in_action = 0
+        match.save()
     for injury in injuries:
         injury.in_action = 0
+        injury.match_date = None
         for match in matches[injury.player_id]:
             if match.date <= injury.begin <= match.date + datetime.timedelta(days=1) and match.minutes_played:
                 injury.in_action = 1
+                injury.match_date = match.date
+                match.in_action = 1
+                match.save()
                 break
         injury.save()
 
