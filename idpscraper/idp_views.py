@@ -10,13 +10,14 @@ import datetime
 
 def test(request):
     """ Temporary method for testing purposes """
-    #  missing = [42787, 32711, 32713, 24463, 3568, 58864, 24465, 32719, 54964, 93584, 28150, 695, 45464, 72792, 162652, 42942, 68574]
-    missing = [93584, 72792, 68574, 54964, 42787, 32719, 32713, 24465]
-    task = Task.get("Football_Player_Details")
-    results = task.results.all()
-    results = [result for result in results if result.player_id in missing]
-    #  results = [Result(results=dict(player_id=1, name="name", position="position", birthday=datetime.datetime.now(), size=2.2, retire_date=datetime.datetime.now()))]
-    return HttpResponse(Task.export_data_to_excel(task.as_table(results)), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return HttpResponse("finished")
+    # Do not forget to set the keys #
+    task = Task.get("Football_Bettina_Player_Details")
+    Result(task_id="Football_Bettina_Player_Details", results=dict(player_id=522, name="Pascal Borel", position="Torwart", birthday=datetime.datetime(year=1978, month=8, day=26), nation="Deutschland")).save()
+    Result(task_id="Football_Bettina_Player_Details", results=dict(player_id=1043, name="Philipp Bönig", position="Linker Verteidiger", birthday=datetime.datetime(year=1980, month=3, day=20), nation="Deutschland")).save()
+    Result(task_id="Football_Bettina_Player_Details", results=dict(player_id=1690, name="Roland Benschneider", position="Innenverteidiger", birthday=datetime.datetime(year=1980, month=8, day=22), nation="Deutschland")).save()
+    Result(task_id="Football_Bettina_Player_Details", results=dict(player_id=1782, name="Timo Achenbach", position="Linker Verteidiger", birthday=datetime.datetime(year=1982, month=9, day=3), nation="Deutschland")).save()
+    Result(task_id="Football_Bettina_Player_Details", results=dict(player_id=543, name="Daniel Bierofka", position="Rechtes Mittelfeld", birthday=datetime.datetime(year=1979, month=2, day=7), nation="Deutschland")).save()
 
 
 def relative_age_athletics(request):
@@ -322,6 +323,41 @@ def put_tasks(request):
         Selector(task_id='Football_Injuries', name="missed_games", is_key=False, xpath='''//table[@class="items"]//tr/td[6]/text()''', type=0, regex="\\d[\\d.,]*"),
         Selector(task_id='Football_Injuries', name="club", is_key=False, xpath='''exe(//table[@class="items"]//tr/td[6],".//@title")''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
         Selector(task_id='Football_Injuries', name="next_url", is_key=False, xpath='''//li[@class="naechste-seite"]/a/@href''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
+
+        Task(name="Football_Bettina_Seasons"),
+        UrlSelector(task_id='Football_Bettina_Seasons', url="http://www.transfermarkt.de/3262/kader/verein/3262/", selector_task_id='Football_Bettina_Seasons', selector_name="season", selector_name2="season"),
+        Selector(task_id='Football_Bettina_Seasons', name="season", is_key=True, xpath='''//select[@name="saison_id"]/option/@value''', type=0, regex="200[1-9]|201\\d"),
+
+        Task(name="Football_Bettina_Clubs"),
+        UrlSelector(task_id='Football_Bettina_Clubs', url="http://www.transfermarkt.de/1-bundesliga/startseite/wettbewerb/L1/saison_id/%s", selector_task_id='Football_Bettina_Seasons', selector_name="season", selector_name2="season"),
+        Selector(task_id='Football_Bettina_Clubs', name="url", is_key=True, xpath='''//table[@class='items']//tr/td[@class='hauptlink no-border-links']/a[1]/@href''', type=1, regex="[^\\n\\r ,.][^\\n\\r]+"),
+
+        Task(name='Football_Bettina_Players'),
+        Selector(task_id='Football_Bettina_Players', name='player_id', type=0, xpath='//a[@class="spielprofil_tooltip"]/@href', regex='\\d[\\d.,]*', is_key=True),
+        Selector(task_id='Football_Bettina_Players', name='season', type=0, xpath='//select[@name="saison_id"]/option[@selected="selected"]/@value', regex='\\d[\\d.,]*', is_key=True),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/%s', selector_task_id='Football_Bettina_Clubs', selector_name='url', selector_name2='url'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u21/startseite/verein/3817/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u20/startseite/verein/5709/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u19/startseite/verein/5710/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u18/startseite/verein/9067/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u17/startseite/verein/17662/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u16/startseite/verein/17368/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u15/startseite/verein/27300/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland/startseite/verein/3262/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
+
+        Task(name="Football_Bettina_Matches"),
+        UrlSelector(task_id='Football_Bettina_Matches', url="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/%s", selector_task_id='Football_Bettina_Players', selector_name="player_id", selector_name2="season"),
+        Selector(task_id='Football_Bettina_Matches', name="player_id", is_key=True, xpath='''(//a[@class="megamenu"])[1]/@href''', type=0, regex="\\d[\\d.,]*"),
+        Selector(task_id='Football_Bettina_Matches', name="date", is_key=True, xpath='''//div[@class="responsive-table"]/table//tr/td[2]''', type=2, regex="[^\\n\\r ,.][^\\n\\r]+"),
+        Selector(task_id='Football_Bettina_Matches', name="minutes_played", is_key=False, xpath='''//div[@class="responsive-table"]/table//tr/td[2]/following-sibling::*[last()]''', type=0, regex="\\d[\\d.,]*"),
+
+
+        Task(name='Football_Bettina_Player_Details'),
+        Selector(task_id='Football_Bettina_Player_Details', name='player_id', type=0, xpath='//link[@rel="canonical"]/@href', regex='\\d[\\d.,]*', is_key=True),
+        Selector(task_id='Football_Bettina_Player_Details', name='name', type=1, xpath='//div[@class="spielername-profil"]/text()', regex='[^\\n\\r ,.][^\\n\\r]+', is_key=False),
+        Selector(task_id='Football_Bettina_Player_Details', name='position', type=1, xpath='//table[@class="profilheader"]//td[preceding-sibling::th/text()="Position:"]', regex='[^\\n\\r ,.][^\\n\\r]+', is_key=False),
+        Selector(task_id='Football_Bettina_Player_Details', name='birthday', type=2, xpath='//td[preceding-sibling::th/text()="Geburtsdatum:"]/a/text()', regex='[^\\n\\r ,.][^\\n\\r]+', is_key=False),
+        UrlSelector(task_id='Football_Bettina_Player_Details', url='http://www.transfermarkt.de/daten/profil/spieler/%s', selector_task_id='Football_Bettina_Players', selector_name='player_id', selector_name2='player_id'),
 
         Task(name='Leichtathletik_Saisons'),
         Selector(task_id='Leichtathletik_Saisons', name='saison', type=0, xpath="id('selectyear')/option/@value", regex='\\d\\d\\d\\d', is_key=True),
