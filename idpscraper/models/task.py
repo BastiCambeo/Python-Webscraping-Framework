@@ -179,7 +179,7 @@ class Task(models.Model):
                 selectors_results[x] = selectors_results[x] or [None]  # Guarantee that an element is there
                 setattr(result, selector.name, selectors_results[x][min(y, len(selectors_results[x]) - 1)])
 
-            result.key = result.get_key(self)
+            result.key = result.get_key()
             if result.key:
                 results.append(result)
 
@@ -207,6 +207,7 @@ class Task(models.Model):
                 html_src = session.get(url, timeout=120).text
                 parsing = self.parse(html_src)
                 success = True
+                time.sleep(1)  # Do not DOS the server!
             except Exception as e:
                 traceback.print_exc()
                 time.sleep(5)

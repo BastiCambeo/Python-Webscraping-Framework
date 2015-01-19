@@ -26,7 +26,7 @@ class Result(models.Model):
         self.results = {selector.name: getattr(self, selector.name) for selector in self.task.selectors.all()}
         super().save(*args, **kwargs)
 
-    def get_key(self, task):
-        if all([getattr(self, selector.name) for selector in task.selectors.all() if selector.is_key]):
-            result_id = u" ".join([str(getattr(self, selector.name)) for selector in task.selectors.all() if selector.is_key])  # Assemble Result_key from key selectors
-            return task.name + result_id
+    def get_key(self):
+        if all([getattr(self, selector.name) for selector in self.task.selectors.all() if selector.is_key]):
+            result_id = u" ".join([str(getattr(self, selector.name)) for selector in self.task.selectors.all() if selector.is_key])  # Assemble Result_key from key selectors
+            return self.task.name + result_id
