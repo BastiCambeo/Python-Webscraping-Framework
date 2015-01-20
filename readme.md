@@ -3,7 +3,7 @@ IDPscraper
 
 **[Documentation](https://github.com/BastiCambeo/idpscrapper/blob/django-port/Dokumentation.pdf?raw=true)**
 
-This is a Web-Scraper that I wrote in my interdisciplinary project of my computer science studies.
+This is a Web-Scraper that I wrote in the interdisciplinary project of my computer science studies.
 
 Anyone is welcome to use this code and/or repurpose it for their own use. All I ask is that you give me credit somewhere :)
 
@@ -13,7 +13,7 @@ The scraper is written in Python, HTML 5 and TypeScript.
 
      The MIT License (MIT)
 
-     Copyright (c) 2014 Henri Sweers
+     Copyright (c) 2015 Sebastian Hofstetter
 
      Permission is hereby granted, free of charge, to any person obtaining a copy of
      this software and associated documentation files (the "Software"), to deal in
