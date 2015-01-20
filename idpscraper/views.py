@@ -28,7 +28,7 @@ def test_task(request, name):
     """ Fetch the first url's data of a task without persisting the data in the database """
     try:
         task = Task.get(name)
-        results = task.test()[:30]
+        results = task.test()[:100]
         results = "<br>".join((" ".join(str(cell) for cell in row) for row in task.as_table(results)))
         return HttpResponse(json.dumps(dict(results=results)), content_type="application/json")
     except Exception as e:
