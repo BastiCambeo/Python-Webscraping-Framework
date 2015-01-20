@@ -27,5 +27,6 @@ urlpatterns = [
     url(r'^injuries_synonymes', idp_views.injuries_synonymes, name='injuries_synonymes'),
     url(r'^relative_age_athletics', idp_views.relative_age_athletics, name='relative_age_athletics'),
     url(r'^relative_age_football', idp_views.relative_age_football, name='relative_age_football'),
+    url(r'^calculate_bettina_columns', idp_views.calculate_bettina_columns, name='calculate_bettina_columns'),
     url(r'^put_tasks', idp_views.put_tasks, name='put_tasks'),
 ]

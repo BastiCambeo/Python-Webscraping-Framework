@@ -24,6 +24,8 @@ class Result(models.Model):
     def save(self, *args, **kwargs):
         # set no-sql values from result object to .results dict #
         self.results = {selector.name: getattr(self, selector.name) for selector in self.task.selectors.all()}
+        if not self.key:
+            self.key = self.get_key()
         super().save(*args, **kwargs)
 
     def get_key(self):
