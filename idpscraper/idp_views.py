@@ -10,6 +10,17 @@ import datetime
 
 def test(request):
     """ Temporary method for testing purposes """
+    task = Task.get("Football_Bettina_Player_Details")
+    for player in task.results.all():
+        if player.matchcount_u21 == 0 and \
+                        player.matchcount_u20 == 0 and \
+                        player.matchcount_u19 == 0 and \
+                        player.matchcount_u18 == 0 and \
+                        player.matchcount_u17 == 0 and \
+                        player.matchcount_u16 == 0 and \
+                        player.matchcount_u15 == 0:
+            player.delete()
+    return HttpResponse("finished")
     # Do not forget to set the keys #
     task = Task.get("Football_Bettina_Player_Details")
     Result(task=task, results=dict(player_id=543, name="Daniel Bierofka", position="Rechtes Mittelfeld", birthday=datetime.datetime(year=1979, month=2, day=7), nation="Deutschland")).save()
@@ -250,9 +261,9 @@ def injuries_synonymes(request):
 
     for player_id, injuries in injuries_by_player.items():
         for i, injury1 in enumerate(injuries):
-            for injury2 in injuries[i+1:]:
+            for injury2 in injuries[i + 1:]:
                 if grouped_injuries.get(injury1.description.strip().lower(), injury1.description.strip().lower()) == \
-                   grouped_injuries.get(injury2.description.strip().lower(), injury2.description.strip().lower()):
+                        grouped_injuries.get(injury2.description.strip().lower(), injury2.description.strip().lower()):
                     # first following similar injury found #
                     injury1.following_injury_date = injury2.begin
                     injury2.preceding_injury_date = injury1.begin
@@ -287,7 +298,7 @@ def calculate_bettina_columns(request):
     def season_from_date(d):
         if not d:
             return d
-        return (d - datetime.timedelta(days=365/2)).year
+        return (d - datetime.timedelta(days=365 / 2)).year
 
     # Create Player dictionary
     players = dict()
@@ -311,20 +322,28 @@ def calculate_bettina_columns(request):
         if not match.minutes_played: continue
 
         player = players[match.player_id]
-        if match.club == "Deutschland": player.matchcount_A += 1
-        elif match.club == "Deutschland U21": player.matchcount_u21 += 1
-        elif match.club == "Deutschland U20": player.matchcount_u20 += 1
-        elif match.club == "Deutschland U19": player.matchcount_u19 += 1
-        elif match.club == "Deutschland U18": player.matchcount_u18 += 1
-        elif match.club == "Deutschland U17": player.matchcount_u17 += 1
-        elif match.club == "Deutschland U16": player.matchcount_u16 += 1
-        elif match.club == "Deutschland U15": player.matchcount_u15 += 1
+        if match.club == "Deutschland":
+            player.matchcount_A += 1
+        elif match.club == "Deutschland U21":
+            player.matchcount_u21 += 1
+        elif match.club == "Deutschland U20":
+            player.matchcount_u20 += 1
+        elif match.club == "Deutschland U19":
+            player.matchcount_u19 += 1
+        elif match.club == "Deutschland U18":
+            player.matchcount_u18 += 1
+        elif match.club == "Deutschland U17":
+            player.matchcount_u17 += 1
+        elif match.club == "Deutschland U16":
+            player.matchcount_u16 += 1
+        elif match.club == "Deutschland U15":
+            player.matchcount_u15 += 1
         elif match.league == "1.Bundesliga":
             if not player.debut_date_first_BL_season or match.date < player.debut_date_first_BL_season:
                 player.debut_date_first_BL_season = match.date
                 player.debut_club_first_BL_season = match.club
 
-        if season_from_date(player.birthday + datetime.timedelta(days=int(24*365.25))) == season_from_date(match.date):
+        if season_from_date(player.birthday + datetime.timedelta(days=int(24 * 365.25))) == season_from_date(match.date):
             player.minutes_age_24 += match.minutes_played
 
     for match in Task.get("Football_Bettina_Matches").results.all():
@@ -405,7 +424,6 @@ def put_tasks(request):
         UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u17/startseite/verein/17662/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
         UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u16/startseite/verein/17368/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
         UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland-u15/startseite/verein/27300/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
-        UrlSelector(task_id='Football_Bettina_Players', url='http://www.transfermarkt.de/deutschland/startseite/verein/3262/saison_id/%s', selector_task_id='Football_Bettina_Seasons', selector_name='season', selector_name2='season'),
 
         Task(name='Football_Bettina_Player_Seasons'),
         UrlSelector(task_id='Football_Bettina_Player_Seasons', url='http://www.transfermarkt.de/player/leistungsdaten/spieler/%s/plus/?saison=1900', selector_task_id='Football_Bettina_Players', selector_name='player_id', selector_name2='player_id'),
