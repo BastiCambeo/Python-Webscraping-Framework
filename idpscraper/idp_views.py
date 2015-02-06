@@ -554,19 +554,20 @@ def put_tasks(request):
         Selector(task_id='Leichtathletik_Top_Performance', name="area", is_key=False, xpath='''//meta[@property="og:url"]/@content''', type=1, regex=".+/([^/]+)/[^/]+/[^/]+/[^/]+"),
         Selector(task_id='Leichtathletik_Top_Performance', name="rank", is_key=False, xpath='''(//table)[1]//tr[.//a and ./td[1] <= 20]/td[1]''', type=0, regex="\\d[\\d.,]*"),
 
-        Task(name="Wohnungen"),
-        UrlSelector(task_id='Wohnungen', url="http://www.immobilienscout24.de%s", selector_task_id='Wohnungen', selector_name="naechste_seite", selector_name2=""),
-        UrlSelector(task_id='Wohnungen', url="http://www.immobilienscout24.de%s", selector_task_id='Wohnungen', selector_name="naechste_seite", selector_name2=""),
-        Selector(task_id='Wohnungen', name="wohnungs_id", is_key=True, xpath='''//span[@class="title"]//a/@href''', type=0, regex="\\d[\\d.,]*"),
-        Selector(task_id='Wohnungen', name="naechste_seite", is_key=False, xpath='''//span[@class="nextPageText"]/..//@href''', type=1, regex=""),
+        Task(name='Wohnungen'),
+        Selector(task_id='Wohnungen', name='wohnungs_id', type=0, xpath='//span[@class="title"]//a/@href', regex='\\d[\\d.,]*', is_key=True),
+        Selector(task_id='Wohnungen', name='naechste_seite', type=1, xpath='//span[@class="nextPageText"]/..//@href', regex='[^\\n\\r ,.][^\\n\\r]+', is_key=False),
+        UrlSelector(task_id='Wohnungen', url='http://www.immobilienscout24.de/Suche/S-2/Wohnung-Miete/Fahrzeitsuche/M_fcnchen/-/116301/2030629/-/-/20/1,50-/30,00-/EURO--900,00/-/-/-/-/-/-/-/-/-/-/-/-/true', selector_task_id='Wohnungen', selector_name='naechste_seite', selector_name2='wohnungs_id'),
+        UrlSelector(task_id='Wohnungen', url='http://www.immobilienscout24.de%s', selector_task_id='Wohnungen', selector_name='naechste_seite', selector_name2='wohnungs_id'),
 
-        Task(name="Wohnungsdetails"),
-        UrlSelector(task_id='Wohnungsdetails', url="http://www.immobilienscout24.de/expose/%s", selector_task_id='Wohnungen', selector_name="wohnungs_id", selector_name2=""),
-        Selector(task_id='Wohnungsdetails', name="wohnungs_id", is_key=True, xpath='''//a[@id="is24-ex-remember-link"]/@href''', type=0, regex="\\d[\\d.,]*"),
-        Selector(task_id='Wohnungsdetails', name="postleitzahl", is_key=False, xpath='''//div[@data-qa="is24-expose-address"]//text()''', type=0, regex="\\d{5}"),
-        Selector(task_id='Wohnungsdetails', name="zimmeranzahl", is_key=False, xpath='''//dd[@class="is24qa-zimmer"]//text()''', type=0, regex="\\d[\\d.,]*"),
-        Selector(task_id='Wohnungsdetails', name="wohnflaeche", is_key=False, xpath='''//dd[@class="is24qa-wohnflaeche-ca"]//text()''', type=0, regex="\\d[\\d.,]*"),
-        Selector(task_id='Wohnungsdetails', name="kaltmiete", is_key=False, xpath='''//dd[@class="is24qa-kaltmiete"]//text()''', type=0, regex="\\d[\\d.,]*"),
+        Task(name='Wohnungsdetails'),
+        Selector(task_id='Wohnungsdetails', name='wohnungs_id', type=0, xpath='//a[@id="is24-ex-remember-link"]/@href', regex='\\d[\\d.,]*', is_key=True),
+        Selector(task_id='Wohnungsdetails', name='gesamtmiete', type=3, xpath='//strong[@class="is24qa-gesamtmiete"]/text()[2]', regex='\\d[\\d.,:]*', is_key=False),
+        Selector(task_id='Wohnungsdetails', name='zimmeranzahl', type=3, xpath='//dd[@class="is24qa-zimmer"]//text()', regex='\\d[\\d.,:]*', is_key=False),
+        Selector(task_id='Wohnungsdetails', name='wohnflaeche', type=0, xpath='//dd[@class="is24qa-wohnflaeche-ca"]//text()', regex='\\d[\\d.,]*', is_key=False),
+        Selector(task_id='Wohnungsdetails', name='kaltmiete', type=0, xpath='//dd[@class="is24qa-kaltmiete"]/text()[2]', regex='\\d[\\d.,]*', is_key=False),
+        Selector(task_id='Wohnungsdetails', name='addresse', type=1, xpath='all(//div[@data-qa="is24-expose-address"]//text())', regex='(.*)Karte', is_key=False),
+        UrlSelector(task_id='Wohnungsdetails', url='http://www.immobilienscout24.de/expose/%s', selector_task_id='Wohnungen', selector_name='wohnungs_id', selector_name2='wohnungs_id'),
     ]
 
     for m in mods:
