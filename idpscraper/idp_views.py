@@ -11,6 +11,9 @@ import datetime
 def test(request):
     """ Temporary method for testing purposes """
     task = Task.get("Football_Bettina_Player_Details")
+
+    return HttpResponse(repr(set(player.player_id for player in Task.get("Football_Bettina2_Players").results.all()) - set(player.player_id for player in Task.get("Football_Bettina2_Player_Details").results.all())))
+
     for player in task.results.all():
         if player.matchcount_u21 == 0 and \
                         player.matchcount_u20 == 0 and \
@@ -21,6 +24,11 @@ def test(request):
                         player.matchcount_u15 == 0:
             player.delete()
     return HttpResponse("finished")
+
+
+
+    task = Task.get("Football_Bettina_Player_Details")
+
     # Do not forget to set the keys #
     task = Task.get("Football_Bettina_Player_Details")
     Result(task=task, results=dict(player_id=543, name="Daniel Bierofka", position="Rechtes Mittelfeld", birthday=datetime.datetime(year=1979, month=2, day=7), nation="Deutschland")).save()
@@ -282,18 +290,21 @@ def injuries_per_day(request):
 def calculate_bettina_columns(request):
     """ Adds debuts and playing minutes to bettinas player_details """
 
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_A", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_u21", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_u20", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_u19", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_u18", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_u17", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_u16", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="matchcount_u15", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="minutes_first_BL_season", type=Selector.INTEGER)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="debut_date_first_BL_season", type=Selector.DATETIME)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="debut_club_first_BL_season", type=Selector.STRING)
-    Selector.objects.update_or_create(task_id="Football_Bettina_Player_Details", name="minutes_age_24", type=Selector.INTEGER)
+    player_details_task_id = "Football_Bettina2_Player_Details"
+    player_matches_task_id = "Football_Bettina2_Matches"
+
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_A", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_u21", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_u20", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_u19", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_u18", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_u17", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_u16", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="matchcount_u15", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="minutes_first_BL_season", type=Selector.INTEGER)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="debut_date_first_BL_season", type=Selector.DATETIME)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="debut_club_first_BL_season", type=Selector.STRING)
+    Selector.objects.update_or_create(task_id=player_details_task_id, name="minutes_age_24", type=Selector.INTEGER)
 
     def season_from_date(d):
         if not d:
@@ -302,7 +313,7 @@ def calculate_bettina_columns(request):
 
     # Create Player dictionary
     players = dict()
-    for player in Task.get("Football_Bettina_Player_Details").results.all():
+    for player in Task.get(player_details_task_id).results.all():
         players[player.player_id] = player
         player.matchcount_A = 0
         player.matchcount_u21 = 0
@@ -318,7 +329,7 @@ def calculate_bettina_columns(request):
         player.minutes_age_24 = 0
 
     # Fill Data
-    for match in Task.get("Football_Bettina_Matches").results.all():
+    for match in Task.get(player_matches_task_id).results.all():
         if not match.minutes_played: continue
 
         player = players[match.player_id]
@@ -343,10 +354,10 @@ def calculate_bettina_columns(request):
                 player.debut_date_first_BL_season = match.date
                 player.debut_club_first_BL_season = match.club
 
-        if season_from_date(player.birthday + datetime.timedelta(days=int(24 * 365.25))) == season_from_date(match.date):
-            player.minutes_age_24 += match.minutes_played
+            if season_from_date(player.birthday + datetime.timedelta(days=int(24 * 365.25))) == season_from_date(match.date):
+                player.minutes_age_24 += match.minutes_played
 
-    for match in Task.get("Football_Bettina_Matches").results.all():
+    for match in Task.get(player_matches_task_id).results.all():
         if not match.minutes_played: continue
         player = players[match.player_id]
         if match.league == "1.Bundesliga" and season_from_date(match.date) == season_from_date(player.debut_date_first_BL_season):
@@ -428,7 +439,7 @@ def put_tasks(request):
         Task(name='Football_Bettina_Player_Seasons'),
         UrlSelector(task_id='Football_Bettina_Player_Seasons', url='http://www.transfermarkt.de/player/leistungsdaten/spieler/%s/plus/?saison=1900', selector_task_id='Football_Bettina_Players', selector_name='player_id', selector_name2='player_id'),
         Selector(task_id='Football_Bettina_Player_Seasons', name='player_id', type=0, xpath='''(//a[@class="megamenu"])[1]/@href''', regex='\\d[\\d.,]*', is_key=True),
-        Selector(task_id='Football_Bettina_Player_Seasons', name="season", is_key=True, xpath='''//select[@name="saison"]/option/@value''', type=0, regex="200[1-9]|201\\d"),
+        Selector(task_id='Football_Bettina_Player_Seasons', name="season", is_key=True, xpath='''//select[@name="saison"]/option/@value''', type=0),
 
         Task(name="Football_Bettina_Matches"),
         UrlSelector(task_id='Football_Bettina_Matches', url="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/%s", selector_task_id='Football_Bettina_Player_Seasons', selector_name="player_id", selector_name2="season"),
@@ -458,7 +469,7 @@ def put_tasks(request):
         Task(name='Football_Bettina2_Player_Seasons'),
         UrlSelector(task_id='Football_Bettina2_Player_Seasons', url='http://www.transfermarkt.de/player/leistungsdaten/spieler/%s/plus/?saison=1900', selector_task_id='Football_Bettina2_Players', selector_name='player_id', selector_name2='player_id'),
         Selector(task_id='Football_Bettina2_Player_Seasons', name='player_id', type=0, xpath='''(//a[@class="megamenu"])[1]/@href''', regex='\\d[\\d.,]*', is_key=True),
-        Selector(task_id='Football_Bettina2_Player_Seasons', name="season", is_key=True, xpath='''//select[@name="saison"]/option/@value''', type=0, regex="200[1-9]|201\\d"),
+        Selector(task_id='Football_Bettina2_Player_Seasons', name="season", is_key=True, xpath='''//select[@name="saison"]/option/@value''', type=0),
 
         Task(name="Football_Bettina2_Matches"),
         UrlSelector(task_id='Football_Bettina2_Matches', url="http://www.transfermarkt.de/spieler/leistungsdatendetails/spieler/%s/plus/1/saison/%s", selector_task_id='Football_Bettina2_Player_Seasons', selector_name="player_id", selector_name2="season"),

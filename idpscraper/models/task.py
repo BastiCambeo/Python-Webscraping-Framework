@@ -136,10 +136,13 @@ class Task(models.Model):
             except Exception as e:
                 return [""]
 
+        def all(context, nodes):
+            return [" ".join(textify(node) for node in nodes)]
 
         ns = etree.FunctionNamespace(None)
         ns['merge_lists'] = merge_lists
         ns['exe'] = exe
+        ns['all'] = all
 
         if not self.selectors.all():
             return html_src  # nothing to do
@@ -207,7 +210,7 @@ class Task(models.Model):
                 html_src = session.get(url, timeout=120).text
                 parsing = self.parse(html_src)
                 success = True
-                time.sleep(1)  # Do not DOS the server!
+                time.sleep(0.3)  # Do not DOS the server!
             except Exception as e:
                 traceback.print_exc()
                 time.sleep(5)
