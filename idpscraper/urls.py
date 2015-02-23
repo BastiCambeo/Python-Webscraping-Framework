@@ -21,12 +21,6 @@ urlpatterns = [
     url(r'^get_task_selectors/([^/]+)', views.get_task_selectors, name='get_task'),
 
 
-    url(r'^test$', idp_views.test, name='test'),
-    url(r'^injuries_in_player_seasons', idp_views.injuries_in_player_seasons, name='injuries_in_player_seasons'),
-    url(r'^injuries_in_action', idp_views.injuries_in_action, name='injuries_in_action'),
-    url(r'^injuries_synonymes', idp_views.injuries_synonymes, name='injuries_synonymes'),
-    url(r'^relative_age_athletics', idp_views.relative_age_athletics, name='relative_age_athletics'),
-    url(r'^relative_age_football', idp_views.relative_age_football, name='relative_age_football'),
-    url(r'^calculate_bettina_columns', idp_views.calculate_bettina_columns, name='calculate_bettina_columns'),
+    url(r'^apartments', views.apartments, name='apartments'),
     url(r'^put_tasks', idp_views.put_tasks, name='put_tasks'),
 ]
