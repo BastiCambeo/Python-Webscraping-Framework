@@ -1,0 +1,19 @@
+{% extends "idpscraper/layout.html" %}
+
+{% block title %}Apartment Settings{% endblock %}
+{% block h1 %}Apartment Settings{% endblock %}
+
+{% block content %}
+    <form id="apartment_settings_form">
+        <h3>Login-Data for automatic email notifications</h3>
+        <input type="text" name="email" value="{{ apartment_settings.email }}" placeholder='E-Mail' class="input_long">
+        <input type="password" name="password" value="{{ apartment_settings.password }}" placeholder='Password' class="input_short">
+        <h3>SMTP Server</h3>
+        <input type="text" name="smtp" value="{{ apartment_settings.smtp }}" placeholder='SMTP Server' class="input_short">
+        <input type="text" name="port" value="{{ apartment_settings.port }}" placeholder='SMTP Port' class="input_short">
+        <!--<h2>Scam Filters</h2>-->
+        <br>
+        <button type="button" class="btn" onclick="save_apartment_settings(function() {window.location.reload();})">Save</button>
+        <button type="button" class="btn" onclick="run_apartment_settings(function() {window.location.reload();})">Run</button>
+    </form>
+{% endblock %}

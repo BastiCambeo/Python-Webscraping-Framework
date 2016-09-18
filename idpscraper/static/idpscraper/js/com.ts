@@ -185,3 +185,22 @@ function console_eval(command) {
         }
     });
 }
+
+function save_apartment_settings(callback=DEFAULT) {
+    $.ajax({
+        type: "POST",
+        url: "/idpscraper/save_apartment_settings",
+        data: $('#apartment_settings_form').serialize(),
+        success: callback,
+        async: false
+    });
+}
+
+function run_apartment_settings(callback=DEFAULT) {
+    $.ajax({
+        type: "POST",
+        url: "/idpscraper/run_apartment_settings",
+        success: callback,
+        async: false
+    });
+}

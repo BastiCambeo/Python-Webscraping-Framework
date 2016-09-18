@@ -2,14 +2,13 @@
 __author__ = 'Sebastian Hofstetter'
 
 from django.conf.urls import url
-
-from idpscraper import views, idp_views
+from idpscraper import views
 
 urlpatterns = [
     url(r'^$', views.index, name='index'),
     url(r'^task/([^/]+)$', views.task, name='task'),
     url(r'^console$', views.console, name='console'),
-    url(r'^export_task/([^.]+).txt', views.export_task, name='export_task'),
+    url(r'^export_task/([^/]+).txt', views.export_task, name='export_task'),
     url(r'^save_task/([^/]+)', views.save_task, name='save_task'),
     url(r'^delete_task/([^/]+)', views.delete_task, name='delete_task'),
     url(r'^export_excel/([^/]+).xlsx', views.export_excel, name='export_excel'),
@@ -20,7 +19,6 @@ urlpatterns = [
     url(r'^test_task/([^/]+)', views.test_task, name='test_task'),
     url(r'^get_task_selectors/([^/]+)', views.get_task_selectors, name='get_task'),
 
-
-    url(r'^apartments', views.apartments, name='apartments'),
-    url(r'^put_tasks', idp_views.put_tasks, name='put_tasks'),
+    url(r'^apartment_settings', views.apartment_settings, name='apartment_settings'),
+    url(r'^save_apartment_settings', views.save_apartment_settings, name='save_apartment_settings'),
 ]

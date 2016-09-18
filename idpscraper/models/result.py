@@ -5,11 +5,15 @@ from django.db import models
 from picklefield.fields import PickledObjectField
 
 
+def createEmptyDict():
+    return dict()
+
+
 class Result(models.Model):
     """ Holds results of webscraping executions """
     key = models.TextField(primary_key=True)
     task = models.ForeignKey('Task', related_name='results')
-    results = PickledObjectField(default=lambda: dict())
+    results = PickledObjectField(default=createEmptyDict)
 
     def __str__(self):
         return repr({k: v for k, v in self.__dict__.items() if k not in ["task_id", "_state", "key"]})

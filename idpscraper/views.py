@@ -1,7 +1,7 @@
 """ This file contains webscraper specific views """
 from django.shortcuts import render
 from django.http import HttpResponseRedirect, HttpResponse
-from idpscraper.models import Task, Selector, UrlSelector, Result, serialize
+from idpscraper.models import Task, Selector, UrlSelector, Result, ApartmentSettings, serialize
 import json
 import traceback
 
@@ -121,3 +121,27 @@ def run_command(request):
         return HttpResponse(json.dumps({"results": repr(eval(request.POST["command"]))}), content_type="application/json")
     except Exception as e:
         return HttpResponse(json.dumps(dict(results=str(e))), content_type="application/json")
+
+
+def apartment_settings(request):
+    """ Apartment Settings """
+    return render(request, 'idpscraper/apartment_settings.html', dict(apartment_settings=ApartmentSettings.get()))
+
+
+def save_apartment_settings(request):
+    """ save_apartment_settings """
+    apartment_settings = ApartmentSettings.get()
+    apartment_settings.email = request.POST.get("email")
+    apartment_settings.password = request.POST.get("password")
+    apartment_settings.smtp = request.POST.get("smtp")
+    apartment_settings.port = request.POST.get("port")
+    apartment_settings.save()
+
+    return HttpResponse(json.dumps(dict()), content_type="application/json")
+
+
+def run_apartment_settings(request):
+    """ run_apartment_settings """
+    apartment_settings = ApartmentSettings.get()
+
+    return HttpResponse("json.dumps(dict())", content_type="application/json")
