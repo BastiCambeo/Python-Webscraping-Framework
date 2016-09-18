@@ -21,4 +21,5 @@ urlpatterns = [
 
     url(r'^apartment_settings', views.apartment_settings, name='apartment_settings'),
     url(r'^save_apartment_settings', views.save_apartment_settings, name='save_apartment_settings'),
+    url(r'^run_apartment_settings', views.run_apartment_settings, name='run_apartment_settings'),
 ]

@@ -5,15 +5,25 @@
 
 {% block content %}
     <form id="apartment_settings_form">
-        <h3>Login-Data for automatic email notifications</h3>
+        <h4>Login-Data for automatic email notifications</h4>
         <input type="text" name="email" value="{{ apartment_settings.email }}" placeholder='E-Mail' class="input_long">
         <input type="password" name="password" value="{{ apartment_settings.password }}" placeholder='Password' class="input_short">
-        <h3>SMTP Server</h3>
-        <input type="text" name="smtp" value="{{ apartment_settings.smtp }}" placeholder='SMTP Server' class="input_short">
-        <input type="text" name="port" value="{{ apartment_settings.port }}" placeholder='SMTP Port' class="input_short">
+
+        <h4>SMTP Server</h4>
+        <input type="text" name="smtp_server" value="{{ apartment_settings.smtp_server }}" placeholder='SMTP Server' class="input_short">
+        <input type="text" name="smtp_port" value="{{ apartment_settings.smtp_port }}" placeholder='SMTP Port' class="input_short">
+
+        <h4>Fetch Intervall (seconds)</h4>
+        <input type="text" name="fetch_intervall" value="{{ apartment_settings.fetch_intervall }}" placeholder='Fetch Intervall' class="input_short">
+
+        <br>
+        Last WebScraper Update: {{ apartment_settings.last_update }}
+        <br>
+
         <!--<h2>Scam Filters</h2>-->
+
         <br>
         <button type="button" class="btn" onclick="save_apartment_settings(function() {window.location.reload();})">Save</button>
-        <button type="button" class="btn" onclick="run_apartment_settings(function() {window.location.reload();})">Run</button>
+        <button type="button" class="btn" onclick="run_apartment_settings()">Run</button>
     </form>
 {% endblock %}

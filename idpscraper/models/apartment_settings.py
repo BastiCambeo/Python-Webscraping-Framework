@@ -9,9 +9,10 @@ class ApartmentSettings(models.Model):
     id = models.TextField(primary_key=True, default="global", editable=False)
     email = models.TextField()
     password = models.TextField()
-    smtp = models.TextField()
-    port = models.IntegerField(default=465)
-
+    smtp_server = models.TextField()
+    smtp_port = models.IntegerField(default=465)
+    fetch_intervall = models.IntegerField(default=60)
+    last_update = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
     def get():

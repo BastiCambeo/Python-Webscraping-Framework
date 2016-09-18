@@ -54,7 +54,7 @@ class Task(models.Model):
         all_results = []
 
         while len(urls) > 0:
-            logging.error("Remaining: %s" % len(urls))
+            logging.info("Remaining: %s" % len(urls))
             url = urls.pop()
             if url not in visited_urls:
                 visited_urls.add(url)
@@ -205,7 +205,7 @@ class Task(models.Model):
 
         while not success:
             try:
-                logging.error("Requested %s" % url)  # For Debugging purposes
+                logging.info("Requested %s" % url)  # For Debugging purposes
                 session = session or Session()
                 html_src = session.get(url, timeout=120).text
                 parsing = self.parse(html_src)

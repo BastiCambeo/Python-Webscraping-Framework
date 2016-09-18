@@ -196,11 +196,13 @@ function save_apartment_settings(callback=DEFAULT) {
     });
 }
 
-function run_apartment_settings(callback=DEFAULT) {
+function run_apartment_settings() {
     $.ajax({
         type: "POST",
         url: "/idpscraper/run_apartment_settings",
-        success: callback,
-        async: false
+        dataType: "json",
+        success: function(data) {
+            $.web2py.flash(data.message);
+        },
     });
 }
