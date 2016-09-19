@@ -184,7 +184,8 @@ def apartment_settings(request):
 def save_apartment_settings(request):
     """ save_apartment_settings """
     apartment_settings = ApartmentSettings.get()
-    apartment_settings.email = request.POST.get("email")
+    apartment_settings.email_to = request.POST.get("email_to")
+    apartment_settings.email_from = request.POST.get("email_from")
     apartment_settings.password = request.POST.get("password")
     apartment_settings.smtp_server = request.POST.get("smtp_server")
     apartment_settings.smtp_port = request.POST.get("smtp_port")
@@ -241,12 +242,12 @@ def apartment_worker():
             msg = MIMEText(text, 'html')
 
             msg['Subject'] = '%s Neue Wohnungen' % len(new_wohnungen)
-            msg['From'] = apartment_settings.email
-            msg['To'] = apartment_settings.email
+            msg['From'] = apartment_settings.email_from
+            msg['To'] = apartment_settings.email_to
 
             s = smtplib.SMTP_SSL(apartment_settings.smtp_server, apartment_settings.smtp_port)
-            s.login(apartment_settings.email, apartment_settings.password)
-            s.sendmail(apartment_settings.email, [apartment_settings.email], msg.as_string())
+            s.login(apartment_settings.email_from, apartment_settings.password)
+            s.sendmail(apartment_settings.email_to, [apartment_settings.email_to], msg.as_string())
             s.quit()
             logging.info("Send Mail: " + msg['Subject'])
 

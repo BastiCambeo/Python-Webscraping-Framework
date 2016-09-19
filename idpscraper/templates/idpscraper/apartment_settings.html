@@ -5,13 +5,16 @@
 
 {% block content %}
     <form id="apartment_settings_form">
-        <h4>Login-Data for automatic email notifications</h4>
-        <input type="text" name="email" value="{{ apartment_settings.email }}" placeholder='E-Mail' class="input_long">
+        <h4>Receiver Email</h4>
+        <input type="text" name="email_to" value="{{ apartment_settings.email_to }}" placeholder='To' class="input_long">
+
+        <h4>Email Credentails (for automatic email notifications)</h4>
+        <input type="text" name="email_from" value="{{ apartment_settings.email_from }}" placeholder='From' class="input_long">
         <input type="password" name="password" value="{{ apartment_settings.password }}" placeholder='Password' class="input_short">
 
         <h4>SMTP Server</h4>
-        <input type="text" name="smtp_server" value="{{ apartment_settings.smtp_server }}" placeholder='SMTP Server' class="input_short">
-        <input type="text" name="smtp_port" value="{{ apartment_settings.smtp_port }}" placeholder='SMTP Port' class="input_short">
+        <input type="text" name="smtp_server" value="{{ apartment_settings.smtp_server }}" placeholder='Host' class="input_short">
+        <input type="text" name="smtp_port" value="{{ apartment_settings.smtp_port }}" placeholder='Port' class="input_short">
 
         <h4>Fetch Intervall (seconds)</h4>
         <input type="text" name="fetch_intervall" value="{{ apartment_settings.fetch_intervall }}" placeholder='Fetch Intervall' class="input_short">

@@ -105,3 +105,6 @@ crashlytics.properties
 crashlytics-build.properties
 
 settings.py
+db.sqlite3
+idpscraper/migrations/*_initial.py
+
