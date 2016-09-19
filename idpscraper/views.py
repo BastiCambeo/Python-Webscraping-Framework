@@ -197,7 +197,7 @@ def save_apartment_settings(request):
 def run_apartment_settings(request):
     """ run_apartment_settings """
     apartment_settings = ApartmentSettings.get()
-    if (datetime.datetime.utcnow().replace(tzinfo=utc) - apartment_settings.last_update).seconds > apartment_settings.fetch_intervall*2:
+    if (datetime.datetime.utcnow().replace(tzinfo=utc) - apartment_settings.last_update).seconds > apartment_settings.fetch_intervall + 10:
         from threading import Thread
         Thread(target=apartment_worker, daemon=True).start()
         message = "Successfully started worker"
@@ -215,6 +215,8 @@ def apartment_worker():
     wggesucht = Task.get("wg-gesucht.de")
 
     while True:
+        apartment_settings.last_update = datetime.datetime.utcnow().replace(tzinfo=utc)
+        apartment_settings.save()
         old_wohnungen = set(wohnung.wohnungs_id for wohnung in list(immoscout.results.all()) + list(immowelt.results.all()) + list(wggesucht.results.all()))
         new_wohnungen = set(wohnung.wohnungs_id for wohnung in immoscout.run() + immowelt.run() + wggesucht.run())
         new_wohnungen -= old_wohnungen
@@ -247,9 +249,6 @@ def apartment_worker():
             s.sendmail(apartment_settings.email, [apartment_settings.email], msg.as_string())
             s.quit()
             logging.info("Send Mail: " + msg['Subject'])
-
-            apartment_settings.last_update = datetime.datetime.utcnow().replace(tzinfo=utc)
-            apartment_settings.save()
 
         import time
         time.sleep(apartment_settings.fetch_intervall)
