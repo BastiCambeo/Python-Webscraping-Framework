@@ -30,7 +30,7 @@ class Selector(models.Model):
         converters.str2float
     )
 
-    task = models.ForeignKey('Task', related_name='selectors')
+    task = models.ForeignKey('Task', related_name='selectors',on_delete=models.CASCADE)
     name = models.TextField()
     type = models.IntegerField(choices=TYPE_CHOICES, default=STRING)
     xpath = models.TextField()

@@ -12,7 +12,7 @@ def createEmptyDict():
 class Result(models.Model):
     """ Holds results of webscraping executions """
     key = models.TextField(primary_key=True)
-    task = models.ForeignKey('Task', related_name='results')
+    task = models.ForeignKey('Task', related_name='results',on_delete=models.CASCADE)
     results = PickledObjectField(default=createEmptyDict)
 
     def __str__(self):

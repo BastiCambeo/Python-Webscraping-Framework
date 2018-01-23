@@ -1,25 +1,26 @@
 """ This file links the views to their urls """
 __author__ = 'Sebastian Hofstetter'
 
-from django.conf.urls import url
-from idpscraper import views
+from django.urls import path
+from . import views
 
+app_name = 'idpscraper'
 urlpatterns = [
-    url(r'^$', views.index, name='index'),
-    url(r'^task/([^/]+)$', views.task, name='task'),
-    url(r'^console$', views.console, name='console'),
-    url(r'^export_task/([^/]+).txt', views.export_task, name='export_task'),
-    url(r'^save_task/([^/]+)', views.save_task, name='save_task'),
-    url(r'^delete_task/([^/]+)', views.delete_task, name='delete_task'),
-    url(r'^export_excel/([^/]+).xlsx', views.export_excel, name='export_excel'),
-    url(r'^run_task/([^/]+)', views.run_task, name='run_task'),
-    url(r'^run_command', views.run_command, name='run_command'),
-    url(r'^new_task', views.new_task, name='new_task'),
-    url(r'^delete_results/([^/]+)', views.delete_results, name='delete_results'),
-    url(r'^test_task/([^/]+)', views.test_task, name='test_task'),
-    url(r'^get_task_selectors/([^/]+)', views.get_task_selectors, name='get_task'),
+    path('', views.index, name='index'),
+    path('task/<name>', views.task, name='task'),
+    path('console', views.console, name='console'),
+    path('export_task/<name>.txt', views.export_task, name='export_task'),
+    path('save_task/<name>', views.save_task, name='save_task'),
+    path('delete_task/<name>', views.delete_task, name='delete_task'),
+    path('export_excel/<name>.xlsx', views.export_excel, name='export_excel'),
+    path('run_task/<name>', views.run_task, name='run_task'),
+    path('run_command', views.run_command, name='run_command'),
+    path('new_task', views.new_task, name='new_task'),
+    path('delete_results/<name>', views.delete_results, name='delete_results'),
+    path('test_task/<name>', views.test_task, name='test_task'),
+    path('get_task_selectors/<name>', views.get_task_selectors, name='get_task'),
 
-    url(r'^apartment_settings', views.apartment_settings, name='apartment_settings'),
-    url(r'^save_apartment_settings', views.save_apartment_settings, name='save_apartment_settings'),
-    url(r'^run_apartment_settings', views.run_apartment_settings, name='run_apartment_settings'),
+    path('apartment_settings', views.apartment_settings, name='apartment_settings'),
+    path('save_apartment_settings', views.save_apartment_settings, name='save_apartment_settings'),
+    path('run_apartment_settings', views.run_apartment_settings, name='run_apartment_settings'),
 ]

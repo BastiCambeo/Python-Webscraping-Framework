@@ -7,9 +7,9 @@ from django.db import models
 class UrlSelector(models.Model):
     """ Urls that should be crawled in this task. Can be fetched from the result of other tasks """
 
-    task = models.ForeignKey('Task', related_name='url_selectors')
+    task = models.ForeignKey('Task', related_name='url_selectors',on_delete=models.CASCADE)
     url = models.TextField()
-    selector_task = models.ForeignKey('Task', related_name='related_url_selectors')
+    selector_task = models.ForeignKey('Task', related_name='related_url_selectors',on_delete=models.CASCADE)
     selector_name = models.TextField()
     selector_name2 = models.TextField()
 

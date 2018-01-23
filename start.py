@@ -17,12 +17,12 @@ if __name__ == "__main__":
         import xlsxwriter
     except ImportError:
         libs = [
-            "django==1.10.1",
-            "django-picklefield==0.3.2",
+            "django==2.0.1",
+            "django-picklefield==1.0.0",
             "feedparser==5.2.1",
-            "lxml==3.6.4",
-            "requests==2.11.1",
-            "xlsxwriter==0.9.3"
+            "lxml==4.1.1",
+            "requests==2.18.4",
+            "xlsxwriter==1.0.2"
         ]
         import subprocess
         print("Trying to install libs via pip3:")
