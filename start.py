@@ -27,6 +27,12 @@ if __name__ == "__main__":
         import subprocess
         print("Trying to install libs via pip3:")
         subprocess.run(["pip3", "install", *libs])
+        from django.core.management import execute_from_command_line
+        import picklefield
+        import feedparser
+        import lxml
+        import requests
+        import xlsxwriter
 
     # Start server if no argument was given
     if len(sys.argv) == 1:
